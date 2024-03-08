@@ -1,0 +1,16 @@
+torch
+torchvision
+torchaudio
+Pillow
+numpy
+git+https://github.com/nasa/pretrained-microscopy-models
+tensorboard
+segmentation-models-pytorch
+tqdm
+opencv-python
+lightning
+jsonargparse[signatures]
+albumentations
+scikit-learn
+matplotlib
+torchmetrics

@@ -1,0 +1,26 @@
+model:
+  class_path: transfer_learning.modules.SegmentationModule
+  init_args:
+    num_classes: 3
+data:
+  class_path: transfer_learning.data.SegmentationDataModule
+  init_args:
+    data_dir: data/segmentation_2
+    tiled: true
+    num_workers: 2
+    batch_size: 32
+    size: [256, 256]
+    num_classes: 3
+trainer:
+  log_every_n_steps: 1
+  callbacks:
+    - class_path: lightning.pytorch.callbacks.early_stopping.EarlyStopping
+      init_args:
+        monitor: "iou/validation"
+        mode: "max"
+        patience: 10
+    - class_path: lightning.pytorch.callbacks.ModelCheckpoint
+      init_args:
+        save_top_k: 1
+        monitor: "iou/validation"
+        mode: "max"

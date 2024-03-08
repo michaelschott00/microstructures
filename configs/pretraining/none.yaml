@@ -1,0 +1,4 @@
+model:
+  init_args:
+    pretrained_weights: none
+    lr: 3e-4

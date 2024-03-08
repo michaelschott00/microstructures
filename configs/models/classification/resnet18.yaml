@@ -1,0 +1,6 @@
+model:
+  init_args:
+    encoder: resnet18
+data:
+  init_args:
+    encoder: resnet18

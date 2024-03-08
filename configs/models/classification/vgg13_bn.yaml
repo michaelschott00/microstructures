@@ -1,0 +1,6 @@
+model:
+  init_args:
+    encoder: vgg13_bn
+data:
+  init_args:
+    encoder: vgg13_bn

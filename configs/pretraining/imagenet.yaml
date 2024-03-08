@@ -1,0 +1,4 @@
+model:
+  init_args:
+    pretrained_weights: imagenet
+    lr: {'encoder': 3e-5, 'other': 3e-4}

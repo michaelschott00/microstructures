@@ -1,0 +1,11 @@
+data:
+  init_args:
+    imagenet_preprocessing: true
+    crop_ratio: 0.8
+    random_horizontal_flip: true
+    random_vertical_flip: true
+    random_rotation: true
+    brightness_limit: 0.1
+    contrast_limit: 0.1
+    blur_limit: 3
+    sharpen_alpha: [0.2, 0.5]

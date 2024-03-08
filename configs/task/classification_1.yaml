@@ -1,0 +1,22 @@
+model:
+  class_path: transfer_learning.modules.ClassificationModule
+  init_args:
+    num_classes: 4
+data:
+  class_path: transfer_learning.data.ClassificationDataModule
+  init_args:
+    data_dir: data/classification_1
+    num_workers: 2
+    size: [130, 130]  # 130x130 is close to the average size of the images
+trainer:
+  callbacks:
+    - class_path: lightning.pytorch.callbacks.early_stopping.EarlyStopping
+      init_args:
+        monitor: "accuracy/validation"
+        mode: "max"
+        patience: 10
+    - class_path: lightning.pytorch.callbacks.ModelCheckpoint
+      init_args:
+        save_top_k: 1
+        monitor: "accuracy/validation"
+        mode: "max"
