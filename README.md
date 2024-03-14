@@ -177,7 +177,7 @@ Other than that, stored checkpoints in the lightning_logs folder still contain t
 Those can be extracted and used to initialize a pytorch model from scratch entirely without lightning.
 See https://lightning.ai/docs/pytorch/stable/deploy/production_intermediate.html for a way to do this.
 
-## Logging
+### Results
 
 During training, validation and testing progress is logged to tensorboard. To view it, run
 
