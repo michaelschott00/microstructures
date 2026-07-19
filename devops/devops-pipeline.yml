@@ -16,6 +16,17 @@ jobs:
   pool:
     vmImage: ubuntu-latest
   steps:
+  - task: UsePythonVersion@0
+    displayName: Use Python >=3.12
+    inputs:
+      versionSpec: '>=3.12'
+
+  - bash: |
+      set -ex
+      az version
+      az extension add -n ml
+    displayName: Add AzureML Extension
+
   - task: AzureCLI@2
     displayName: Create compute cluster if needed
     inputs:
@@ -36,17 +47,6 @@ jobs:
         else
           echo "Cluster already exists."
         fi
-
-  - task: UsePythonVersion@0
-    displayName: Use Python >=3.12
-    inputs:
-      versionSpec: '>=3.12'
-
-  - bash: |
-      set -ex
-      az version
-      az extension add -n ml
-    displayName: Add AzureML Extension
 
   - task: AzureCLI@2
     name: submit_azureml_job_task
