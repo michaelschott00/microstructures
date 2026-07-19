@@ -1,0 +1,29 @@
+$schema: https://azuremlschemas.azureedge.net/latest/pipelineJob.schema.json
+type: pipeline
+
+display_name: training-pipeline
+description: Pipeline to train a classification model
+
+settings:
+  default_compute: azureml:gpu-cluster
+
+outputs:
+  final_pipeline_output:
+    mode: rw_mount
+
+jobs:
+  train:
+    type: command
+    component: ./train-component.yml
+    inputs:
+      data:
+        type: uri_folder
+        path: azureml://subscriptions/fbdcc566-737f-4934-bf8a-b239cce4097a/resourcegroups/AzureExperiments/workspaces/MLWorkspace/datastores/microstructures/paths/data/classification_1/train/
+        mode: ro_mount
+      configs:
+        type: uri_folder
+        path: ./configs
+        mode: ro_mount
+    outputs:
+      train_output: 
+        mode: rw_mount

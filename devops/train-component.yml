@@ -1,0 +1,28 @@
+$schema: https://azuremlschemas.azureedge.net/latest/commandComponent.schema.json
+type: command
+
+name: train_component
+display_name: Training component
+version: 1
+
+inputs:
+  train_component_input:
+    type: uri_folder
+
+outputs:
+  train_component_output:
+    type: uri_folder
+
+code: ../transfer_learning
+
+environment: 
+  image: python
+
+command: >-
+    python -m transfer_learning.train fit \
+    --config ${{inputs.configs}}/base.yaml \
+    --config ${{inputs.configs}}/task/classification_1.yaml \
+    --config ${{inputs.configs}}/models/classification/vgg16_bn.yaml \
+    --config ${{inputs.configs}}/optimization/adamw_basic.yaml \
+    --config ${{inputs.configs}}/pretraining/image-micronet.yaml \
+    --config ${{inputs.configs}}/augmentation/microscope.yaml 

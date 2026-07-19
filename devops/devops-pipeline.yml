@@ -1,0 +1,77 @@
+name: submit-azure-machine-learning-job
+
+trigger:
+- none
+
+variables:
+  cluster-name: "gpu-cluster"
+  service-connection: 'machine-learning-connection'
+  resource-group: 'AzureExperiments'
+  workspace: 'MLWorkspace'
+
+jobs:
+- job: SubmitAzureMLJob
+  displayName: Submit AzureML Job
+  timeoutInMinutes: 300
+  pool:
+    vmImage: ubuntu-latest
+  steps:
+  - task: AzureCLI@2
+    displayName: Create compute cluster if needed
+    inputs:
+      azureSubscription: $(service-connection)
+      scriptType: bash
+      inlineScript: |
+        # Check if cluster exists
+        CLUSTER_NAME="$(cluster-name)"
+        if ! az ml compute show -n $CLUSTER_NAME -g $(resource-group) -w $(workspace) 2>/dev/null; then
+          echo "Cluster doesn't exist. Creating..."
+          az ml compute create \
+            -n $CLUSTER_NAME \
+            --type AmlCompute \
+            --min-instances 0 \
+            --max-instances 10 \
+            -g $(resource-group) \
+            -w $(workspace)
+        else
+          echo "Cluster already exists."
+        fi
+
+  - task: UsePythonVersion@0
+    displayName: Use Python >=3.12
+    inputs:
+      versionSpec: '>=3.12'
+
+  - bash: |
+      set -ex
+      az version
+      az extension add -n ml
+    displayName: Add AzureML Extension
+
+  - task: AzureCLI@2
+    name: submit_azureml_job_task
+    displayName: Submit AzureML Job Task
+    inputs:
+      azureSubscription: $(service-connection)
+      scriptLocation: inlineScript
+      scriptType: bash
+      inlineScript: |
+        job_name=$(az ml job create --file devops/ml-pipeline.yml -g $(resource-group) -w $(workspace) --query name --output tsv)
+        echo "##vso[task.setvariable variable=JOB_NAME;isOutput=true;]$job_name"
+
+  - task: AzureCLI@2
+    displayName: Wait for AzureML Job Completion
+    inputs:
+      azureSubscription: $(service-connection)
+      scriptType: bash
+      inlineScript: |
+        az ml job stream -n $(submit_azureml_job_task.JOB_NAME) -g $(resource-group) -w $(workspace)
+
+  - task: AzureCLI@2
+    displayName: Delete Compute Cluster
+    condition: always()
+    inputs:
+      azureSubscription: $(service-connection)
+      scriptType: bash
+      inlineScript: |
+        az ml compute delete -n cpu-cluster -g $(resource-group) -w $(workspace) --yes
