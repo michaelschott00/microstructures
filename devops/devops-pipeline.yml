@@ -58,16 +58,8 @@ jobs:
       scriptLocation: inlineScript
       scriptType: bash
       inlineScript: |
-        az ml job create --file devops/ml-pipeline.yml -g $(resource-group) -w $(workspace) --query name --output tsv
-
-  - task: AzureCLI@2
-    displayName: Wait for AzureML Job Completion
-    inputs:
-      azureSubscription: $(service-connection)
-      scriptLocation: inlineScript
-      scriptType: bash
-      inlineScript: |
-        az ml job stream -n submit-azure-machine-learning-job -g $(resource-group) -w $(workspace)
+        job_name=$(az ml job create --file devops/ml-pipeline.yml -g $(resource-group) -w $(workspace) --query name --output tsv)
+        az ml job stream -n job_name -g $(resource-group) -w $(workspace)
 
   - task: AzureCLI@2
     displayName: Delete Compute Cluster
