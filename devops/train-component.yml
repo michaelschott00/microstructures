@@ -20,7 +20,7 @@ code: ../transfer_learning
 environment: 
   image: python
 
-command: >-
+command: |-
     python -m transfer_learning.train fit \
     --config ${{inputs.configs}}/base.yaml \
     --config ${{inputs.configs}}/task/classification_1.yaml \
