@@ -6,11 +6,13 @@ display_name: Training component
 version: 1
 
 inputs:
-  train_component_input:
+  data:
+    type: uri_folder
+  configs:
     type: uri_folder
 
 outputs:
-  train_component_output:
+  train_output:
     type: uri_folder
 
 code: ../transfer_learning
