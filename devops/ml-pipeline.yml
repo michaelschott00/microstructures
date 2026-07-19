@@ -22,7 +22,7 @@ jobs:
         mode: ro_mount
       configs:
         type: uri_folder
-        path: ./configs
+        path: ../configs
         mode: ro_mount
     outputs:
       train_output: 
