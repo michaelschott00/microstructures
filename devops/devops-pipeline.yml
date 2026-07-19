@@ -45,7 +45,7 @@ jobs:
             --max-instances 10 \
             -g $(resource-group) \
             -w $(workspace) \
-            --size Standard_D2_v2
+            --size Standard_F4als_v6
         else
           echo "Cluster already exists."
         fi
