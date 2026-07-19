@@ -59,7 +59,7 @@ jobs:
       scriptType: bash
       inlineScript: |
         job_name=$(az ml job create --file devops/ml-pipeline.yml -g $(resource-group) -w $(workspace) --query name --output tsv)
-        az ml job stream -n job_name -g $(resource-group) -w $(workspace)
+        az ml job stream -n "$job_name" -g $(resource-group) -w $(workspace)
 
   - task: AzureCLI@2
     displayName: Delete Compute Cluster
