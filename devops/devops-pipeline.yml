@@ -68,7 +68,7 @@ jobs:
       scriptLocation: inlineScript
       scriptType: bash
       inlineScript: |
-        az ml job stream -n $(submit_azureml_job_task.JOB_NAME) -g $(resource-group) -w $(workspace)
+        az ml job stream -n "$(submit_azureml_job_task.JOB_NAME)" -g $(resource-group) -w $(workspace)
 
   - task: AzureCLI@2
     displayName: Delete Compute Cluster
