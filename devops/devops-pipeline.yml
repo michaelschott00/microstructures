@@ -58,8 +58,7 @@ jobs:
       scriptLocation: inlineScript
       scriptType: bash
       inlineScript: |
-        job_name=$(az ml job create --file devops/ml-pipeline.yml -g $(resource-group) -w $(workspace) --query name --output tsv)
-        echo "##vso[task.setvariable variable=JOB_NAME;isOutput=true;]$job_name"
+        az ml job create --file devops/ml-pipeline.yml -g $(resource-group) -w $(workspace) --query name --output tsv
 
   - task: AzureCLI@2
     displayName: Wait for AzureML Job Completion
@@ -68,7 +67,7 @@ jobs:
       scriptLocation: inlineScript
       scriptType: bash
       inlineScript: |
-        az ml job stream -n "$(SubmitAzureMLJob.JOB_NAME)" -g $(resource-group) -w $(workspace)
+        az ml job stream -n submit-azure-machine-learning-job -g $(resource-group) -w $(workspace)
 
   - task: AzureCLI@2
     displayName: Delete Compute Cluster
