@@ -45,7 +45,7 @@ jobs:
             --max-instances 10 \
             -g $(resource-group) \
             -w $(workspace) \
-            --vm-size Standard_Dsv7
+            --size Standard_Dsv7
         else
           echo "Cluster already exists."
         fi

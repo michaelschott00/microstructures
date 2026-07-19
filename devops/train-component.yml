@@ -27,4 +27,5 @@ command: >-
     --config ${{inputs.configs}}/models/classification/vgg16_bn.yaml \
     --config ${{inputs.configs}}/optimization/adamw_basic.yaml \
     --config ${{inputs.configs}}/pretraining/image-micronet.yaml \
-    --config ${{inputs.configs}}/augmentation/microscope.yaml 
+    --config ${{inputs.configs}}/augmentation/microscope.yaml \
+    --trainer.max_epochs=1
