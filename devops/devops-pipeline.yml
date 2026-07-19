@@ -69,4 +69,4 @@ jobs:
       scriptType: bash
       scriptLocation: inlineScript
       inlineScript: |
-        az ml compute delete -n cpu-cluster -g $(resource-group) -w $(workspace) --yes
+        az ml compute delete -n $(cluster-name) -g $(resource-group) -w $(workspace) --yes
