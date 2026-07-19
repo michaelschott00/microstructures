@@ -65,6 +65,7 @@ jobs:
     displayName: Wait for AzureML Job Completion
     inputs:
       azureSubscription: $(service-connection)
+      scriptLocation: inlineScript
       scriptType: bash
       inlineScript: |
         az ml job stream -n $(submit_azureml_job_task.JOB_NAME) -g $(resource-group) -w $(workspace)
@@ -75,5 +76,6 @@ jobs:
     inputs:
       azureSubscription: $(service-connection)
       scriptType: bash
+      scriptLocation: inlineScript
       inlineScript: |
         az ml compute delete -n cpu-cluster -g $(resource-group) -w $(workspace) --yes
