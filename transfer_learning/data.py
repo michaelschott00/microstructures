@@ -404,11 +404,11 @@ class ClassificationDataModule(DataModule):
         sample_size: sample size (NOT a proportion but the absolute size, i.e. if you specify 100, your train set will have 100 samples)
     """
 
-    def __init__(self,  # TODO: update
-                 # filesystem stuff
+    def __init__(self,
+                 # dataset
                  data_dir: str,
 
-                 # hardware related
+                 # compute
                  num_workers: int = 0,
 
                  # preprocessing
@@ -460,13 +460,12 @@ class SegmentationDataModule(DataModule):
         tiled: whether to use tiled images
     """
 
-    def __init__(self,  # TODO: update
-                 # filesystem stuff
+    def __init__(self,
+                 # dataset
                  data_dir: str,
-
                  num_classes: int = 1,
 
-                 # hardware related
+                 # compute
                  num_workers: int = 0,
 
                  # preprocessing

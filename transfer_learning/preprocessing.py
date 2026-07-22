@@ -205,7 +205,6 @@ def main():
     # call the appropriate function
     if "crop_size" in args:
         if args.new:
-            print('using new shit')
             crop_new_images(args.input_dir, args.output_dir, args.crop_size, args.img_size)
         elif 'segmentation' in args.input_dir:
             crop(args.input_dir, args.output_dir, args.crop_size, args.img_size)

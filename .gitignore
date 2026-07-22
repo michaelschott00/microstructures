@@ -2,3 +2,7 @@ data/
 .venv/
 .env
 pyrightconfig.json
+report-redacted.pdf
+archive/
+lightning_logs/
+devops/
