@@ -1,18 +1,35 @@
 # Transfer Learning for Microstructure Classification and Segmentation
 
-## References
+## Results
 
-- [A deep learning approach for complex microstructure inference](https://rdcu.be/dAD2j)
-- [Microstructure segmentation with deep learning encoders pre-trained on a large microscopy dataset](https://rdcu.be/dAD2f)
-- [MicroNet](https://github.com/nasa/pretrained-microscopy-models)
-- [lightning](https://lightning.ai/docs/pytorch/stable/)
+### MicroNet pretraining increases performance, particularly in the low data regime
 
-## Overview
+Combining ImageNet- and MicroNet pretraining and utilizing domain-motivated data augmentation together with fine-tuning techniques, we
 
-This project is about applying transfer learning to the task of classifying and segmenting microstructures in microscopy images of steel. Unfortunately, the datasets are not publicaly available, so the code is not directly executable. However, the code can be adapted to other datasets.
-Currently it supports training, validation and testing for [VGG](https://arxiv.org/abs/1409.1556) and [ResNet](https://arxiv.org/abs/1512.03385) encoders for classification.
-In the case of segmentation, different backbones and more encoders are available out of the box.
-See [segmentation models pytorch](https://github.com/qubvel/segmentation_models.pytorch) for a list of available encoders and backbones.
+- improved F1-Score by 0.05 and
+- improved IoU by 0.12
+
+over randomly initialized VGG baselines. We further
+
+- increased F1-Score by ~6% in the low data regime (605 samples)
+
+compared to ImageNet pretraining.
+
+### Full data results
+
+| Encoder | Pretraining       | F1-Score | Encoder  | Pretraining       | IoU  |
+| ------- | ------------      | -------- | -------  | ------------      | ---  |
+| VGG16   | None              | 0.84     | VGG-16   | None              | 0.53 |
+| VGG16   | ImageNet          | 0.88     | VGG-16   | ImageNet          | 0.60 |
+| VGG16   | MicroNet          | 0.83     | VGG-16   | MicroNet          | 0.50 |
+| VGG16   | ImageNet-Micronet | 0.89     | VGG-16   | ImageNet-Micronet | 0.60 |
+|         |                   |          | ResNet50 | ImageNet          | 0.62 |
+|         |                   |          | ResNet50 | MicroNet          | 0.46 |
+|         |                   |          | ResNet50 | ImageNet-MicroNet | 0.65 |
+
+### Low-data results
+
+- [ ] Re-run evaluation (waiting for github pipeline)
 
 ## Usage
 
@@ -24,54 +41,9 @@ Install required packages with
 pip install -r requirements.txt
 ```
 
-### Overview
+### Classification Example
 
-The entire project is controlled from the command line. The entry point, which calls [`transfer_learning/train.py`](transfer_learning/train.py) is
-
-```sh
-python -m transfer_learning.train
-```
-
-To get an overview of all commands available, run
-
-```sh
-python -m transfer_learning.train --help
-```
-
-### Training
-
-The access point for training is
-
-```sh
-python -m transfer_learning.train train
-```
-
-To get an overview of available options, run
-
-```sh
-python -m transfer_learning.train fit --help
-```
-
-These options need not be set from the command line, but can be specified in yaml configuration files.
-A couple examples, i.e. those we used for the project, can be found in [configs](./configs).
-
-A training run can be done by specifying configuration files `$CONFIG_1, ..., $CONFIG_N` from [configs](./configs):
-
-```sh
-python -m transfer_learning.train fit --config $CONFIG_1 ... --config $CONFIG_N
-```
-
-**Note**: Configuration files can overlap in the options they set.
-For example `$CONFIG_1` could set `batch_size=32` and `$CONFIG_2` could set
-`batch_size=64`. In this case we would get `batch_size=64`. In general, the files overwrite
-each other from left to right, such that the option is chosen, which is
-specified in the configuration file furthest to the right.
-
-#### Classification Example
-
-As an example, to train a network for the classification task using [VGG-16](https://arxiv.org/abs/1409.1556) with [BatchNorm](https://arxiv.org/abs/1502.03167) pretrained
-on [ImageNet](https://www.image-net.org/) and [MicroNet](https://github.com/nasa/pretrained-microscopy-models), optimized with [AdamW](https://arxiv.org/abs/1711.05101) and using data augmentation, the script needs to be
-called as follows:
+The following command trains a network for microstructure classification using [VGG-16](https://arxiv.org/abs/1409.1556) with [BatchNorm](https://arxiv.org/abs/1502.03167), [ImageNet](https://www.image-net.org/) and [MicroNet](https://github.com/nasa/pretrained-microscopy-models) pretraining using the [AdamW](https://arxiv.org/abs/1711.05101) optimizer and data augmentation:
 
 ```sh
 python -m transfer_learning.train fit \
@@ -83,12 +55,7 @@ python -m transfer_learning.train fit \
     --config configs/augmentation/microscope.yaml
 ```
 
-**Note**: The order matters here. We set different learning rates in
-the pretraining configuration file. So it must appear after the optimizer file.
-Otherwise the optimizer configuration file overwrites the different learning rates with
-a default value.
-
-#### Segmentation Example
+### Segmentation Example
 
 A training run for segmentation could look as follows:
 
@@ -102,11 +69,10 @@ python -m transfer_learning.train fit \
     --config configs/augmentation/microscope.yaml
 ```
 
-#### Setting Parameters from the CLI
+### Setting Parameters from the CLI
 
-It is also possible to set/overwrite individual hyperparameters from the commandline. For example
-to specify `batch_size` manually in the above example, regardless of what value it had in any of the
-configuration files, the following would work:
+Individual hyperparameters can be overwritten from the command line. For example
+to specify `batch_size` manually, use
 
 ```sh
 python -m transfer_learning.train fit \
@@ -147,37 +113,18 @@ be done by running
 python -m transfer_learning.train validate --config $CONFIG --ckpt_path $CKPT_PATH
 ```
 
-or 
+or
 
 ```sh
 python -m transfer_learning.train test --config $CONFIG --ckpt_path $CKPT_PATH
 ```
 
-where `$CONFIG` is the path to the configuration file and `$CKPT_PATH` is the path to the checkpoint file.
+`$CONFIG` is the path to the configuration file and `$CKPT_PATH` is the path to the checkpoint file.
 
 **Note**: The configuration file MUST be specified before the checkpoint. Otherwise
 the model will be initialized randomly.
 
-### Prediction
-
-This was not part of the project, so it is not implemented. There is, however, a way to implement
-
-```sh
-python -m transfer_learning.train predict
-```
-
-The following pages
-
-- https://lightning.ai/docs/pytorch/stable/common/lightning_module.html#prediction-loop
-- https://lightning.ai/docs/pytorch/stable/api/lightning.pytorch.callbacks.BasePredictionWriter.html#basepredictionwriter
-- https://github.com/Lightning-AI/lightning/discussions/10509
-
-might be useful.
-Other than that, stored checkpoints in the lightning_logs folder still contain the usual state_dicts.
-Those can be extracted and used to initialize a pytorch model from scratch entirely without lightning.
-See https://lightning.ai/docs/pytorch/stable/deploy/production_intermediate.html for a way to do this.
-
-### Results
+### Viewing logs and results
 
 During training, validation and testing progress is logged to tensorboard. To view it, run
 
@@ -185,12 +132,8 @@ During training, validation and testing progress is logged to tensorboard. To vi
 tensorboard --logdir lightning_logs
 ```
 
-Additionally, as mentioned before, a configuration file for restoring all hyperparameters as well as a checkpoint
-containing all information for restoring the module's state are logged to the corresponding directory in `lightning_logs`.
-All hyperparameters are also logged to an additional `hparams.yaml` file in the same folder.
+## References
 
-## Further Reading on Configuration Files
-
-Configuration files are in yaml format, and there are plenty of examples in [configs](./configs).
-The documentation for configuration files in general can be found here:
-- https://lightning.ai/docs/pytorch/stable/cli/lightning_cli_advanced.html
+- [A deep learning approach for complex microstructure inference](https://rdcu.be/dAD2j)
+- [Microstructure segmentation with deep learning encoders pre-trained on a large microscopy dataset](https://rdcu.be/dAD2f)
+- [MicroNet](https://github.com/nasa/pretrained-microscopy-models)
