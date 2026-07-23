@@ -33,8 +33,8 @@ class ClassificationDataset(Dataset):
     def __init__(self,
                  split: Literal["train", "dev", "test"],
                  root_dir: str,
-                 preprocessing: Callable[np.ndarray, np.ndarray] = None,
-                 augmentation: Callable[np.ndarray, np.ndarray] = None) -> None:
+                 preprocessing: Callable[[np.ndarray], np.ndarray] | None = None,
+                 augmentation: Callable[[np.ndarray], np.ndarray] | None = None) -> None:
         super().__init__()
 
         if split not in ['train', 'dev', 'test']:
@@ -122,8 +122,8 @@ class SegmentationDataset(Dataset):
                  split: Literal["train", "dev", "test"],
                  root_dir: str,
                  num_classes: int,
-                 preprocessing: Callable[np.ndarray, np.ndarray] = None,
-                 augmentation: Callable[np.ndarray, np.ndarray] = None,
+                 preprocessing: Callable[[np.ndarray], np.ndarray] | None = None,
+                 augmentation: Callable[[np.ndarray], np.ndarray] | None = None,
                  tiled: bool = True) -> None:
         super().__init__()
 
@@ -413,22 +413,22 @@ class ClassificationDataModule(DataModule):
 
                  # preprocessing
                  imagenet_preprocessing: bool = True,
-                 size: List[int] = None,
-                 encoder: str = None,
+                 size: List[int] | None = None,
+                 encoder: str | None = None,
 
                  # data augmentation
-                 crop_ratio: float = None,
+                 crop_ratio: float | None = None,
                  random_horizontal_flip: bool = False,
                  random_vertical_flip: bool = False,
                  random_rotation: bool = False,
-                 brightness_limit: float = None,
-                 contrast_limit: float = None,
-                 blur_limit: int = None,
-                 sharpen_alpha: List[float] = None,
+                 brightness_limit: float | None = None,
+                 contrast_limit: float | None = None,
+                 blur_limit: int | None = None,
+                 sharpen_alpha: List[float] | None = None,
 
                  # batching and sampling
                  batch_size: int = 32,
-                 sample_size: int = None) -> None:
+                 sample_size: int | None = None) -> None:
         super().__init__(dataset_cls=ClassificationDataset, dataset_args={})
 
         # store hyperparameters to access them through self.hparams, superclass uses this to access all hprams
@@ -470,21 +470,21 @@ class SegmentationDataModule(DataModule):
 
                  # preprocessing
                  imagenet_preprocessing: bool = True,
-                 size: List[int] = None,
-                 encoder: str = None,
+                 size: List[int] | None = None,
+                 encoder: str | None = None,
 
                  # data augmentation
-                 crop_ratio: float = None,
+                 crop_ratio: float | None = None,
                  random_horizontal_flip: bool = False,
                  random_vertical_flip: bool = False,
                  random_rotation: bool = False,
-                 brightness_limit: float = None,
-                 contrast_limit: float = None,
-                 blur_limit: int = None,
-                 sharpen_alpha: List[float] = None,
+                 brightness_limit: float | None = None,
+                 contrast_limit: float | None = None,
+                 blur_limit: int | None = None,
+                 sharpen_alpha: List[float] | None = None,
 
                  # batching and sampling
-                 sample_size: int = None,
+                 sample_size: int | None = None,
                  batch_size: int = 32,
 
                  # tiling

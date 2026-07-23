@@ -4,10 +4,8 @@ from transfer_learning.modules import ClassificationModule, SegmentationModule
 
 
 class TestClassificationModuleValidation:
-    def test_rejects_freezing_encoder_with_random_init(self):
-        # Note: freeze_encoder_after_epoch=0 is falsy in Python and does not trigger
-        # this guard, even though it is documented as "freeze in general" - use a
-        # truthy value here to exercise the check.
+    @pytest.mark.parametrize("freeze_encoder_after_epoch", [0, 1])
+    def test_rejects_freezing_encoder_with_random_init(self, freeze_encoder_after_epoch):
         with pytest.raises(AssertionError):
             ClassificationModule(
                 encoder="resnet18",
@@ -16,7 +14,7 @@ class TestClassificationModuleValidation:
                 optimizer="adamw",
                 scheduler="none",
                 lr=1e-3,
-                freeze_encoder_after_epoch=1,
+                freeze_encoder_after_epoch=freeze_encoder_after_epoch,
             )
 
     def test_rejects_lr_dict_missing_keys(self):

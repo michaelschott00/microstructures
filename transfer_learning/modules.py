@@ -7,11 +7,14 @@ from sklearn.metrics import ConfusionMatrixDisplay
 from torch import nn
 
 matplotlib.use("Agg")  # crashed for other backends
-from typing import Dict, List, Literal, Optional, Tuple, Union
+from typing import Dict, Literal, Union
 
 import matplotlib.pyplot as plt
 import segmentation_models_pytorch as smp
 import torchmetrics
+import torchmetrics.classification
+from lightning.pytorch.loggers import TensorBoardLogger
+from lightning.pytorch.utilities.types import OptimizerLRScheduler
 
 from transfer_learning import util
 
@@ -44,18 +47,18 @@ class ClassificationModule(pl.LightningModule):
         lr: Union[
             float, Dict[str, float]
         ],  # dict allows different learning rates for encoder and classifier
-        weight_decay: float = None,
-        T_max: int = None,
-        step_size: int = None,
-        gamma: float = None,
-        freeze_encoder_after_epoch: int = None,  # set to 0 to freeze in general
-        train_last: int = None,
+        weight_decay: float | None = None,
+        T_max: int | None = None,
+        step_size: int | None = None,
+        gamma: float | None = None,
+        freeze_encoder_after_epoch: int | None = None,  # set to 0 to freeze in general
+        train_last: int | None = None,
     ) -> None:
         super().__init__()
 
-        assert not (pretrained_weights == "none" and freeze_encoder_after_epoch), (
-            "Freezing the encoder at random initialization is not useful."
-        )
+        assert not (
+            pretrained_weights == "none" and freeze_encoder_after_epoch is not None
+        ), "Freezing the encoder at random initialization is not useful."
 
         if isinstance(lr, dict):
             assert "encoder" in lr and "other" in lr, (
@@ -167,12 +170,7 @@ class ClassificationModule(pl.LightningModule):
 
         return model
 
-    def configure_optimizers(
-        self,
-    ) -> Tuple[
-        List[torch.optim.Optimizer],
-        Optional[List[torch.optim.lr_scheduler._LRScheduler]],
-    ]:
+    def configure_optimizers(self) -> OptimizerLRScheduler:
         """Configure optimizers for encoder and classifier layers, allowing different learning rates using parameter groups."""
         if isinstance(self.hparams.lr, dict):
             encoder_group = []
@@ -337,6 +335,8 @@ class ClassificationModule(pl.LightningModule):
         """A hook that is called by lighting after every validation epoch.
         Here, it is used to compute the confusion matrix and log it. Can be arbitrarily expanded.
         """
+        assert isinstance(self.logger, TensorBoardLogger), "This hook requires a TensorBoardLogger to be configured."
+
         fig = plt.figure()
         ConfusionMatrixDisplay(self.val_confmat.compute().cpu().numpy()).plot(
             ax=fig.gca()
@@ -348,19 +348,25 @@ class ClassificationModule(pl.LightningModule):
         # reset confusion matrix MUST be called, otherwise metric as aggregated across validation runs.
         self.val_confmat.reset()
 
-    def on_train_batch_start(self, batch: torch.Tensor, batch_idx: int) -> None:
+    def on_train_batch_start(
+        self, batch: torch.Tensor, batch_idx: int, dataloader_idx: int = 0
+    ) -> None:
         """A hook that is called by lighting before every training batch.
         Here, it is used to log the first input batch to ensure that the model receives sane inputs."""
         if (self.current_epoch == 0) and (batch_idx == 0):
+            assert isinstance(self.logger, TensorBoardLogger), "This hook requires a TensorBoardLogger to be configured."
             X, y = batch
             self.logger.experiment.add_image(
                 "input/train", torchvision.utils.make_grid(X)
             )
 
-    def on_validation_batch_start(self, batch: torch.Tensor, batch_idx: int) -> None:
+    def on_validation_batch_start(
+        self, batch: torch.Tensor, batch_idx: int, dataloader_idx: int = 0
+    ) -> None:
         """A hook that is called by lighting before every validation batch.
         Here, it is used to log the first input batch to ensure that the model receives sane inputs."""
         if (self.current_epoch == 0) and (batch_idx == 0):
+            assert isinstance(self.logger, TensorBoardLogger), "This hook requires a TensorBoardLogger to be configured."
             X, y = batch
             self.logger.experiment.add_image(
                 "input/validation", torchvision.utils.make_grid(X)
@@ -397,13 +403,13 @@ class SegmentationModule(pl.LightningModule):
         optimizer: Literal["adamw", "sgd"],
         scheduler: Literal["none", "cosine", "step"],
         lr: Union[float, Dict[str, float]],
-        T_max: int = None,
-        weight_decay: float = None,
-        momentum: int = None,
-        gamma: float = None,
-        step_size: int = None,
+        T_max: int | None = None,
+        weight_decay: float | None = None,
+        momentum: int | None = None,
+        gamma: float | None = None,
+        step_size: int | None = None,
         freeze_encoder_after_epoch: bool = False,
-        train_last: int = None,
+        train_last: int | None = None,
     ) -> None:
         super().__init__()
 
@@ -475,21 +481,9 @@ class SegmentationModule(pl.LightningModule):
 
         return model
 
-    def configure_optimizers(
-        self,
-    ) -> Tuple[
-        List[torch.optim.Optimizer],
-        Optional[List[torch.optim.lr_scheduler._LRScheduler]],
-    ]:
+    def configure_optimizers(self) -> OptimizerLRScheduler:
         """Configure optimizers for encoder and backbone layers, allowing different learning rates for each to avoid undoing pretraing while
         sufficiently training the classifier."""
-
-        assert self.hparams.optimizer in ["adamw", "sgd"], (
-            f"{self.hparams.optimizer} is not supported"
-        )
-        assert self.hparams.scheduler in ["none", "cosine", "step"], (
-            f"{self.hparams.scheduler} is not supported"
-        )
 
         # create parameter groups for encoder and backbone
         if isinstance(self.hparams.lr, dict):
@@ -518,6 +512,10 @@ class SegmentationModule(pl.LightningModule):
                 weight_decay=self.hparams.weight_decay,
                 momentum=self.hparams.momentum,
             )
+        else:
+            raise NotImplementedError(
+                f"Optimizer {self.hparams.optimizer} is not yet supported."
+            )
 
         if self.hparams.scheduler == "none":
             return optimizer
@@ -535,6 +533,10 @@ class SegmentationModule(pl.LightningModule):
             )
             scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
                 optimizer, T_max=self.hparams.T_max
+            )
+        else:
+            raise NotImplementedError(
+                f"Scheduler {self.hparams.scheduler} is not yet supported."
             )
 
         return [optimizer], [scheduler]
@@ -608,8 +610,11 @@ class SegmentationModule(pl.LightningModule):
 
         return {"loss": loss, "logits": logits, "labels": y}
 
-    def on_train_batch_start(self, batch: torch.Tensor, batch_idx: int) -> None:
+    def on_train_batch_start(
+        self, batch: torch.Tensor, batch_idx: int, dataloader_idx: int = 0
+    ) -> None:
         if (self.current_epoch == 0) and (batch_idx == 0):
+            assert isinstance(self.logger, TensorBoardLogger), "This hook requires a TensorBoardLogger to be configured."
             X, y = batch
             self.logger.experiment.add_image(
                 "input/train_imgs", torchvision.utils.make_grid(X)
@@ -618,8 +623,11 @@ class SegmentationModule(pl.LightningModule):
                 "input/train_masks", torchvision.utils.make_grid(y)
             )
 
-    def on_validation_batch_start(self, batch: torch.Tensor, batch_idx: int) -> None:
+    def on_validation_batch_start(
+        self, batch: torch.Tensor, batch_idx: int, dataloader_idx: int = 0
+    ) -> None:
         if (self.current_epoch == 0) and (batch_idx == 0):
+            assert isinstance(self.logger, TensorBoardLogger), "This hook requires a TensorBoardLogger to be configured."
             X, y = batch
             self.logger.experiment.add_image(
                 "input/validation_imgs", torchvision.utils.make_grid(X)
@@ -630,6 +638,9 @@ class SegmentationModule(pl.LightningModule):
 
     def on_train_epoch_end(self) -> None:
         """We allow freezing the encoder after a certain number of epochs. Also, we log the predicted masks of the model"""
+        assert isinstance(self.logger, TensorBoardLogger), "This hook requires a TensorBoardLogger to be configured."
+        assert self.X_t_train is not None and self.X_t_dev is not None
+
         if self.current_epoch == self.hparams.freeze_encoder_after_epoch:
             util.freeze_encoder_layers(self.model.encoder, ignore_last=0)
 
@@ -647,12 +658,12 @@ class SegmentationModule(pl.LightningModule):
                 ).float()
             else:
                 pred_train = (
-                    F.softmax(self.forward(self.X_t_train, dim=1).detach().cpu())
+                    F.softmax(self.forward(self.X_t_train).detach().cpu(), dim=1)
                     .argmax(1)
                     .float()
                 )
                 pred_dev = (
-                    F.softmax(self.forward(self.X_t_dev, dim=1).detach().cpu())
+                    F.softmax(self.forward(self.X_t_dev).detach().cpu(), dim=1)
                     .argmax(1)
                     .float()
                 )

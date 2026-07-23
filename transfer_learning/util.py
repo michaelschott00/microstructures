@@ -1,4 +1,4 @@
-from torch.utils import model_zoo
+from torch.hub import load_state_dict_from_url
 import pretrained_microscopy_models as pmm
 from torch import nn
 from typing import Literal
@@ -38,6 +38,6 @@ def load_micronet_weights(encoder: str, pretrained_weights: Literal["micronet", 
     if pretrained_weights not in ["micronet", "image-micronet"]:
         raise ValueError("pretrained_weights must be one of ['micronet', 'image-micronet']")
     url = pmm.util.get_pretrained_microscopynet_url(encoder, pretrained_weights)
-    state_dict = model_zoo.load_url(url)
+    state_dict = load_state_dict_from_url(url)
     check_state_dict_sanity(state_dict)
     return state_dict
