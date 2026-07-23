@@ -68,7 +68,6 @@ class ClassificationModule(pl.LightningModule):
                 "Remove this assertion if you know what you are doing."
             )
 
-        # store all arguments to the constructor to self.hparams and to tensorboard
         self.save_hyperparameters()
 
         self.model = self.create_classification_model(encoder, pretrained_weights)
@@ -79,49 +78,49 @@ class ClassificationModule(pl.LightningModule):
 
         # Accuracy
         self.val_acc = torchmetrics.classification.MulticlassAccuracy(
-            num_classes=self.hparams.num_classes, average="macro"
+            num_classes=self.hparams["num_classes"], average="macro"
         )
 
         self.test_acc = torchmetrics.classification.MulticlassAccuracy(
-            num_classes=self.hparams.num_classes, average="macro"
+            num_classes=self.hparams["num_classes"], average="macro"
         )
 
         # F1
         self.val_f1 = torchmetrics.classification.MulticlassF1Score(
-            num_classes=self.hparams.num_classes,
+            num_classes=self.hparams["num_classes"],
             average="macro",  # micro averages are all the same as accuracy, so we use macro
         )
 
         self.test_f1 = torchmetrics.classification.MulticlassF1Score(
-            num_classes=self.hparams.num_classes,
+            num_classes=self.hparams["num_classes"],
             average="macro",  # micro averages are all the same as accuracy, so we use macro
         )
 
         # Precision
         self.val_precision = torchmetrics.classification.MulticlassPrecision(
-            num_classes=self.hparams.num_classes, average="macro"
+            num_classes=self.hparams["num_classes"], average="macro"
         )
 
         self.test_precision = torchmetrics.classification.MulticlassPrecision(
-            num_classes=self.hparams.num_classes, average="macro"
+            num_classes=self.hparams["num_classes"], average="macro"
         )
 
         # Recall
         self.val_recall = torchmetrics.classification.MulticlassRecall(
-            num_classes=self.hparams.num_classes, average="macro"
+            num_classes=self.hparams["num_classes"], average="macro"
         )
 
         self.test_recall = torchmetrics.classification.MulticlassRecall(
-            num_classes=self.hparams.num_classes, average="macro"
+            num_classes=self.hparams["num_classes"], average="macro"
         )
 
         # Confusion matrix
         self.val_confmat = torchmetrics.classification.MulticlassConfusionMatrix(
-            num_classes=self.hparams.num_classes
+            num_classes=self.hparams["num_classes"]
         )
 
         self.test_confmat = torchmetrics.classification.MulticlassConfusionMatrix(
-            num_classes=self.hparams.num_classes
+            num_classes=self.hparams["num_classes"]
         )
 
     def create_classification_model(
@@ -153,15 +152,15 @@ class ClassificationModule(pl.LightningModule):
                 f"Pretrained weights {pretrained_weights} are not supported."
             )
 
-        if self.hparams.train_last is not None:
-            util.freeze_encoder_layers(model, self.hparams.train_last)
+        if self.hparams["train_last"] is not None:
+            util.freeze_encoder_layers(model, self.hparams["train_last"])
 
         # different architectures name their classification head differently
         if "resnet" in encoder:
-            model.fc = nn.Linear(model.fc.in_features, self.hparams.num_classes)
+            model.fc = nn.Linear(model.fc.in_features, self.hparams["num_classes"])
         elif "vgg" in encoder:
             model.classifier = nn.Linear(
-                model.classifier[0].in_features, self.hparams.num_classes
+                model.classifier[0].in_features, self.hparams["num_classes"]
             )
         else:
             raise NotImplementedError(
@@ -172,49 +171,54 @@ class ClassificationModule(pl.LightningModule):
 
     def configure_optimizers(self) -> OptimizerLRScheduler:
         """Configure optimizers for encoder and classifier layers, allowing different learning rates using parameter groups."""
-        if isinstance(self.hparams.lr, dict):
+        if isinstance(self.hparams["lr"], dict):
             encoder_group = []
             classifier_group = []
             for name, parameter_groups in self.named_parameters():
                 if not ("fc" in name or "classifier" in name):
                     encoder_group.append(
-                        {"params": parameter_groups, "lr": self.hparams.lr["encoder"]}
+                        {
+                            "params": parameter_groups,
+                            "lr": self.hparams["lr"]["encoder"],
+                        }
                     )
                 else:
                     classifier_group.append(
-                        {"params": parameter_groups, "lr": self.hparams.lr["other"]}
+                        {"params": parameter_groups, "lr": self.hparams["lr"]["other"]}
                     )
             parameter_groups = encoder_group + classifier_group
         else:
-            parameter_groups = [{"params": self.parameters(), "lr": self.hparams.lr}]
+            parameter_groups = [{"params": self.parameters(), "lr": self.hparams["lr"]}]
 
         # treat optimizer as hyperparameter
-        if self.hparams.optimizer == "adamw":
+        if self.hparams["optimizer"] == "adamw":
             optimizer = torch.optim.AdamW(
-                parameter_groups, weight_decay=self.hparams.weight_decay
+                parameter_groups, weight_decay=self.hparams["weight_decay"]
             )
-        elif self.hparams.optimizer == "sgd":
+        elif self.hparams["optimizer"] == "sgd":
             optimizer = torch.optim.SGD(
-                parameter_groups, weight_decay=self.hparams.weight_decay
+                parameter_groups, weight_decay=self.hparams["weight_decay"]
             )
         else:
             raise NotImplementedError(
-                f"Optimizer {self.hparams.optimizer} is not yet supported."
+                f"Optimizer {self.hparams['optimizer']} is not yet supported."
             )
 
-        if self.hparams.scheduler == "none":
-            return optimizer  # we can not return [optimizer], [None] or [optimizer], []
-        elif self.hparams.scheduler == "cosine":
+        if self.hparams["scheduler"] == "none":
+            return optimizer
+        elif self.hparams["scheduler"] == "cosine":
             scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
-                optimizer, T_max=self.hparams.T_max
+                optimizer, T_max=self.hparams["T_max"]
             )
-        elif self.hparams.scheduler == "step":
+        elif self.hparams["scheduler"] == "step":
             scheduler = torch.optim.lr_scheduler.StepLR(
-                optimizer, step_size=self.hparams.step_size, gamma=self.hparams.gamma
+                optimizer,
+                step_size=self.hparams["step_size"],
+                gamma=self.hparams["gamma"],
             )
         else:
             raise NotImplementedError(
-                f"Scheduler {self.hparams.scheduler} is not yet supported."
+                f"Scheduler {self.hparams['scheduler']} is not yet supported."
             )
 
         return [optimizer], [scheduler]
@@ -223,31 +227,25 @@ class ClassificationModule(pl.LightningModule):
         return self.model(x)
 
     def training_step(self, batch: torch.Tensor, batch_idx: int) -> torch.Tensor:
-        """Handles a single training step, i.e. forward pass and loss function computation. Also logs the loss.
-        This is called by lightning and must always return the loss."""
         X, y = batch
 
         logits = self.forward(X)
-        assert not logits.isnan().any().item(), "NaN logits"  # just to be sure
+        assert not logits.isnan().any().item(), "NaN logits"
 
         loss = self.loss_func(logits, y)
 
-        # log loss to tensorboard
         self.log("loss/train", loss, on_step=True, on_epoch=False, prog_bar=True)
 
-        return loss  # must return loss and only loss, since this is passed internally to the optimization step
+        return loss
 
     def on_train_epoch_end(self):
-        """A hook that is called by lighting after every training epoch.
-        Here, it is used to freeze the encoder after a certain number of epochs but can be arbitrarily expanded."""
-        if self.current_epoch == self.hparams.freeze_encoder_after_epoch:
-            # freezing after several epochs only supports freezing the full encoder at the moment, this could be extended if necessary
+        """Freezes the encoder after a certain number of epochs."""
+        if self.current_epoch == self.hparams["freeze_encoder_after_epoch"]:
             util.freeze_encoder_layers(self.model, ignore_last=0)
 
     def validation_step(
         self, batch: torch.Tensor, batch_idx: int
     ) -> Dict[str, torch.Tensor]:
-        """Handles a single validation step, i.e. forward pass and metric computation. Also computes and logs the metrics. Can be extended to return arbitrary values."""
         X, y = batch
 
         logits = self.forward(X)
@@ -258,10 +256,8 @@ class ClassificationModule(pl.LightningModule):
         self.val_precision(logits, y)
         self.val_recall(logits, y)
 
-        # confusion matrix does not support self.log(self.val_confmat), so we need to update it here manually
         self.val_confmat.update(logits, y)
 
-        # log other metrics to tensorboard
         self.log("loss/validation", loss, on_step=False, on_epoch=True, prog_bar=True)
         self.log(
             "accuracy/validation",
@@ -291,7 +287,6 @@ class ClassificationModule(pl.LightningModule):
         return {"loss": loss, "logits": logits, "labels": y}
 
     def test_step(self, batch: torch.Tensor, batch_idx: int) -> Dict[str, torch.Tensor]:
-        """Handles a single test step, i.e. forward pass and metric computation. Also computes and logs the metrics. Can be extended to return arbitrary values."""
         X, y = batch
 
         logits = self.forward(X)
@@ -304,7 +299,6 @@ class ClassificationModule(pl.LightningModule):
 
         self.test_confmat.update(logits, y)
 
-        # log metrics to tensorboard
         self.log("loss/test", loss, on_step=False, on_epoch=True, prog_bar=True)
         self.log(
             "accuracy/test", self.test_acc, on_step=False, on_epoch=True, prog_bar=True
@@ -329,13 +323,12 @@ class ClassificationModule(pl.LightningModule):
             "loss": loss,
             "logits": logits,
             "labels": y,
-        }  # here we can essentially return whatever we want
+        }
 
     def on_validation_epoch_end(self) -> None:
-        """A hook that is called by lighting after every validation epoch.
-        Here, it is used to compute the confusion matrix and log it. Can be arbitrarily expanded.
-        """
-        assert isinstance(self.logger, TensorBoardLogger), "This hook requires a TensorBoardLogger to be configured."
+        assert isinstance(self.logger, TensorBoardLogger), (
+            "This hook requires a TensorBoardLogger to be configured."
+        )
 
         fig = plt.figure()
         ConfusionMatrixDisplay(self.val_confmat.compute().cpu().numpy()).plot(
@@ -345,16 +338,15 @@ class ClassificationModule(pl.LightningModule):
             "confusion matrix/validation", fig, self.current_epoch
         )
 
-        # reset confusion matrix MUST be called, otherwise metric as aggregated across validation runs.
         self.val_confmat.reset()
 
     def on_train_batch_start(
         self, batch: torch.Tensor, batch_idx: int, dataloader_idx: int = 0
     ) -> None:
-        """A hook that is called by lighting before every training batch.
-        Here, it is used to log the first input batch to ensure that the model receives sane inputs."""
         if (self.current_epoch == 0) and (batch_idx == 0):
-            assert isinstance(self.logger, TensorBoardLogger), "This hook requires a TensorBoardLogger to be configured."
+            assert isinstance(self.logger, TensorBoardLogger), (
+                "This hook requires a TensorBoardLogger to be configured."
+            )
             X, y = batch
             self.logger.experiment.add_image(
                 "input/train", torchvision.utils.make_grid(X)
@@ -363,10 +355,10 @@ class ClassificationModule(pl.LightningModule):
     def on_validation_batch_start(
         self, batch: torch.Tensor, batch_idx: int, dataloader_idx: int = 0
     ) -> None:
-        """A hook that is called by lighting before every validation batch.
-        Here, it is used to log the first input batch to ensure that the model receives sane inputs."""
         if (self.current_epoch == 0) and (batch_idx == 0):
-            assert isinstance(self.logger, TensorBoardLogger), "This hook requires a TensorBoardLogger to be configured."
+            assert isinstance(self.logger, TensorBoardLogger), (
+                "This hook requires a TensorBoardLogger to be configured."
+            )
             X, y = batch
             self.logger.experiment.add_image(
                 "input/validation", torchvision.utils.make_grid(X)
@@ -426,25 +418,24 @@ class SegmentationModule(pl.LightningModule):
                 "Remove this assertion if you know what you are doing."
             )
 
-        # store arguments of constructor to self.hparams and tensorboard
         self.save_hyperparameters()
 
         self.model = self.create_segmentation_model()
 
-        if self.hparams.num_classes == 1:
+        if self.hparams["num_classes"] == 1:
             self.train_iou = torchmetrics.classification.BinaryJaccardIndex()
             self.val_iou = torchmetrics.classification.BinaryJaccardIndex()
             self.test_iou = torchmetrics.classification.BinaryJaccardIndex()
             self.loss_func = nn.BCEWithLogitsLoss()  # this allows using the logits directly without applying softmax first and is thus consistent with CrossEntropyLoss
         else:
             self.train_iou = torchmetrics.classification.MulticlassJaccardIndex(
-                num_classes=self.hparams.num_classes, average="macro"
+                num_classes=self.hparams["num_classes"], average="macro"
             )
             self.val_iou = torchmetrics.classification.MulticlassJaccardIndex(
-                num_classes=self.hparams.num_classes, average="macro"
+                num_classes=self.hparams["num_classes"], average="macro"
             )
             self.test_iou = torchmetrics.classification.MulticlassJaccardIndex(
-                num_classes=self.hparams.num_classes, average="macro"
+                num_classes=self.hparams["num_classes"], average="macro"
             )
             self.loss_func = nn.CrossEntropyLoss()
 
@@ -458,26 +449,30 @@ class SegmentationModule(pl.LightningModule):
 
         # smp supports `imagenet` out of the box, micronet must be loaded manually
         initial_weights = (
-            "imagenet" if self.hparams.pretrained_weights == "imagenet" else None
+            "imagenet" if self.hparams["pretrained_weights"] == "imagenet" else None
         )
 
         model = getattr(
-            smp, self.hparams.architecture
+            smp, self.hparams["architecture"]
         )(
-            encoder_name=self.hparams.encoder,  # choose encoder, e.g. mobilenet_v2 or efficientnet-b7
+            encoder_name=self.hparams[
+                "encoder"
+            ],  # choose encoder, e.g. mobilenet_v2 or efficientnet-b7
             encoder_weights=initial_weights,
             in_channels=3,  # model input channels (1 for gray-scale images, 3 for RGB, etc.)
-            classes=self.hparams.num_classes,  # model output channels (number of classes in your dataset)
+            classes=self.hparams[
+                "num_classes"
+            ],  # model output channels (number of classes in your dataset)
         )
 
-        if self.hparams.pretrained_weights in ["micronet", "image-micronet"]:
+        if self.hparams["pretrained_weights"] in ["micronet", "image-micronet"]:
             state_dict = util.load_micronet_weights(
-                self.hparams.encoder, self.hparams.pretrained_weights
+                self.hparams["encoder"], self.hparams["pretrained_weights"]
             )
             model.encoder.load_state_dict(state_dict)
 
-        if self.hparams.train_last is not None:
-            util.freeze_encoder_layers(model.encoder, self.hparams.train_last)
+        if self.hparams["train_last"] is not None:
+            util.freeze_encoder_layers(model.encoder, self.hparams["train_last"])
 
         return model
 
@@ -486,57 +481,63 @@ class SegmentationModule(pl.LightningModule):
         sufficiently training the classifier."""
 
         # create parameter groups for encoder and backbone
-        if isinstance(self.hparams.lr, dict):
+        if isinstance(self.hparams["lr"], dict):
             encoder_group = []
             backbone_group = []
             for name, parameter_groups in self.named_parameters():
                 if "encoder" in name:
                     encoder_group.append(
-                        {"params": parameter_groups, "lr": self.hparams.lr["encoder"]}
+                        {
+                            "params": parameter_groups,
+                            "lr": self.hparams["lr"]["encoder"],
+                        }
                     )
                 else:
                     backbone_group.append(
-                        {"params": parameter_groups, "lr": self.hparams.lr["other"]}
+                        {"params": parameter_groups, "lr": self.hparams["lr"]["other"]}
                     )
             parameter_groups = encoder_group + backbone_group
         else:
-            parameter_groups = [{"params": self.parameters(), "lr": self.hparams.lr}]
+            parameter_groups = [{"params": self.parameters(), "lr": self.hparams["lr"]}]
 
-        if self.hparams.optimizer == "adamw":
+        if self.hparams["optimizer"] == "adamw":
             optimizer = torch.optim.AdamW(
-                parameter_groups, weight_decay=self.hparams.weight_decay
+                parameter_groups, weight_decay=self.hparams["weight_decay"]
             )
-        elif self.hparams.optimizer == "sgd":
+        elif self.hparams["optimizer"] == "sgd":
             optimizer = torch.optim.SGD(
                 parameter_groups,
-                weight_decay=self.hparams.weight_decay,
-                momentum=self.hparams.momentum,
+                weight_decay=self.hparams["weight_decay"],
+                momentum=self.hparams["momentum"],
             )
         else:
             raise NotImplementedError(
-                f"Optimizer {self.hparams.optimizer} is not yet supported."
+                f"Optimizer {self.hparams['optimizer']} is not yet supported."
             )
 
-        if self.hparams.scheduler == "none":
+        if self.hparams["scheduler"] == "none":
             return optimizer
 
-        if self.hparams.scheduler == "step":
+        if self.hparams["scheduler"] == "step":
             assert (
-                self.hparams.step_size is not None and self.hparams.gamma is not None
+                self.hparams["step_size"] is not None
+                and self.hparams["gamma"] is not None
             ), "step_size and gamma must be specified for step LR"
             scheduler = torch.optim.lr_scheduler.StepLR(
-                optimizer, step_size=self.hparams.step_size, gamma=self.hparams.gamma
+                optimizer,
+                step_size=self.hparams["step_size"],
+                gamma=self.hparams["gamma"],
             )
-        elif self.hparams.scheduler == "cosine":
-            assert self.hparams.T_max is not None, (
+        elif self.hparams["scheduler"] == "cosine":
+            assert self.hparams["T_max"] is not None, (
                 "T_max must be specified for cosine annealing"
             )
             scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
-                optimizer, T_max=self.hparams.T_max
+                optimizer, T_max=self.hparams["T_max"]
             )
         else:
             raise NotImplementedError(
-                f"Scheduler {self.hparams.scheduler} is not yet supported."
+                f"Scheduler {self.hparams['scheduler']} is not yet supported."
             )
 
         return [optimizer], [scheduler]
@@ -547,7 +548,7 @@ class SegmentationModule(pl.LightningModule):
     def training_step(self, batch: torch.Tensor, batch_idx: int) -> torch.Tensor:
         X, y = batch
 
-        if self.hparams.num_classes > 1:
+        if self.hparams["num_classes"] > 1:
             y = y.squeeze(1).long()  # magically makes the dimensions work out, I think
 
         if batch_idx == 0 and self.current_epoch == 0:
@@ -571,7 +572,7 @@ class SegmentationModule(pl.LightningModule):
     ) -> Dict[str, torch.Tensor]:
         X, y = batch
 
-        if self.hparams.num_classes > 1:
+        if self.hparams["num_classes"] > 1:
             y = y.squeeze(1).long()
 
         if batch_idx == 0 and self.current_epoch == 0:
@@ -593,7 +594,7 @@ class SegmentationModule(pl.LightningModule):
     def test_step(self, batch: torch.Tensor, batch_idx: int) -> Dict[str, torch.Tensor]:
         X, y = batch
 
-        if self.hparams.num_classes > 1:
+        if self.hparams["num_classes"] > 1:
             y = y.squeeze(1).long()
 
         if batch_idx == 0 and self.current_epoch == 0:
@@ -614,7 +615,9 @@ class SegmentationModule(pl.LightningModule):
         self, batch: torch.Tensor, batch_idx: int, dataloader_idx: int = 0
     ) -> None:
         if (self.current_epoch == 0) and (batch_idx == 0):
-            assert isinstance(self.logger, TensorBoardLogger), "This hook requires a TensorBoardLogger to be configured."
+            assert isinstance(self.logger, TensorBoardLogger), (
+                "This hook requires a TensorBoardLogger to be configured."
+            )
             X, y = batch
             self.logger.experiment.add_image(
                 "input/train_imgs", torchvision.utils.make_grid(X)
@@ -627,7 +630,9 @@ class SegmentationModule(pl.LightningModule):
         self, batch: torch.Tensor, batch_idx: int, dataloader_idx: int = 0
     ) -> None:
         if (self.current_epoch == 0) and (batch_idx == 0):
-            assert isinstance(self.logger, TensorBoardLogger), "This hook requires a TensorBoardLogger to be configured."
+            assert isinstance(self.logger, TensorBoardLogger), (
+                "This hook requires a TensorBoardLogger to be configured."
+            )
             X, y = batch
             self.logger.experiment.add_image(
                 "input/validation_imgs", torchvision.utils.make_grid(X)
@@ -638,10 +643,12 @@ class SegmentationModule(pl.LightningModule):
 
     def on_train_epoch_end(self) -> None:
         """We allow freezing the encoder after a certain number of epochs. Also, we log the predicted masks of the model"""
-        assert isinstance(self.logger, TensorBoardLogger), "This hook requires a TensorBoardLogger to be configured."
+        assert isinstance(self.logger, TensorBoardLogger), (
+            "This hook requires a TensorBoardLogger to be configured."
+        )
         assert self.X_t_train is not None and self.X_t_dev is not None
 
-        if self.current_epoch == self.hparams.freeze_encoder_after_epoch:
+        if self.current_epoch == self.hparams["freeze_encoder_after_epoch"]:
             util.freeze_encoder_layers(self.model.encoder, ignore_last=0)
 
         # visualize predicted masks
@@ -649,7 +656,7 @@ class SegmentationModule(pl.LightningModule):
         self.X_t_dev = self.X_t_dev.to(self.device)
 
         with torch.no_grad():
-            if self.hparams.num_classes == 1:
+            if self.hparams["num_classes"] == 1:
                 pred_train = (
                     F.sigmoid(self.forward(self.X_t_train).detach().cpu()) > 0.5
                 ).float()

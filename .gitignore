@@ -1,4 +1,5 @@
 # Project ignores
+data_tmp/
 data/classification_1/
 data/classification_2/
 data/segmentation_1/
