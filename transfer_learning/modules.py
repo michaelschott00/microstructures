@@ -234,7 +234,7 @@ class ClassificationModule(pl.LightningModule):
 
         loss = self.loss_func(logits, y)
 
-        self.log("loss/train", loss, on_step=True, on_epoch=False, prog_bar=True)
+        self.log("loss/train", loss, on_step=False, on_epoch=True, prog_bar=True)
 
         return loss
 
