@@ -1,11 +1,5 @@
 # Project ignores
-data/classification/raw/
-data/classification_1/
-data/classification_2/
-data/segmentation_1/
-data/segmentation_2/
-.venv/
-.env
+data/
 pyrightconfig.json
 references/
 .rumdl_cache/
