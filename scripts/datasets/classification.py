@@ -2,6 +2,7 @@ import os
 from collections import Counter
 
 import click
+import matplotlib.pyplot as plt
 import pandas as pd
 from PIL import Image
 
@@ -63,41 +64,62 @@ def split(n, seed, input_dir, output_dir, metadata_path):
 
 
 @cli.command()
-@click.option("--input-dir", type=str, required=True)
-@click.option("--recurse", is_flag=True, help="Recurse into subdirectories")
-def sizes(input_dir, recurse):
-    """Print a table of image sizes and how often they occur."""
+@click.option(
+    "--input-dir",
+    type=str,
+    required=True,
+    help="Root dataset directory, structured as root_dir/split/class",
+)
+def sizes(input_dir):
+    """Plot a grid of barplots (one per split) of image sizes by class."""
     counts = Counter()
-    if recurse:
-        for root, _, filenames in os.walk(input_dir):
-            subdir = os.path.relpath(root, input_dir)
-            for filename in filenames:
-                with Image.open(os.path.join(root, filename)) as im:
-                    counts[(subdir, *im.size)] += 1
-    else:
-        for filename in os.listdir(input_dir):
-            with Image.open(os.path.join(input_dir, filename)) as im:
-                counts[(".", *im.size)] += 1
+    for split in sorted(os.listdir(input_dir)):
+        split_dir = os.path.join(input_dir, split)
+        if not os.path.isdir(split_dir):
+            continue
+        for class_name in sorted(os.listdir(split_dir)):
+            class_dir = os.path.join(split_dir, class_name)
+            if not os.path.isdir(class_dir):
+                continue
+            for filename in os.listdir(class_dir):
+                with Image.open(os.path.join(class_dir, filename)) as im:
+                    counts[(split, class_name, im.size)] += 1
 
-    if recurse:
-        by_subdir = {}
-        for (subdir, width, height), count in counts.items():
-            by_subdir.setdefault(subdir, []).append(((width, height), count))
+    by_split = {}
+    for (split, class_name, size), count in counts.items():
+        by_split.setdefault(split, {}).setdefault(class_name, {})[size] = count
 
-        for subdir in sorted(by_subdir):
-            click.echo(subdir)
-            click.echo(f"{'width':>6} {'height':>6} {'count':>6}")
-            for (width, height), count in sorted(
-                by_subdir[subdir], key=lambda kv: -kv[1]
-            ):
-                click.echo(f"{width:>6} {height:>6} {count:>6}")
-            click.echo()
-    else:
-        click.echo(f"{'width':>6} {'height':>6} {'count':>6}")
-        for (_, width, height), count in sorted(
-            counts.items(), key=lambda kv: -kv[1]
-        ):
-            click.echo(f"{width:>6} {height:>6} {count:>6}")
+    order = {"train": 0, "dev": 1, "test": 2}
+    splits = sorted(by_split, key=lambda s: (order.get(s, len(order)), s))
+    fig, axes = plt.subplots(
+        len(splits), 1, squeeze=False, figsize=(12, 4 * len(splits))
+    )
+
+    for ax, split in zip(axes.flat, splits):
+        by_class = by_split[split]
+        classes = sorted(by_class)
+        sizes_ = sorted(
+            {size for class_counts in by_class.values() for size in class_counts}
+        )
+        labels = [f"{width}x{height}" for width, height in sizes_]
+
+        x = range(len(sizes_))
+        width = 0.8 / len(classes)
+        for i, class_name in enumerate(classes):
+            values = [by_class[class_name].get(size, 0) for size in sizes_]
+            offsets = [xi + i * width for xi in x]
+            bars = ax.bar(offsets, values, width=width, label=class_name)
+            ax.bar_label(bars, fontsize=7)
+
+        ax.set_xticks([xi + width * (len(classes) - 1) / 2 for xi in x])
+        ax.set_xticklabels(labels, rotation=45)
+        ax.set_title(split)
+        ax.set_xlabel("")
+        ax.set_ylabel("count")
+        ax.legend()
+
+    fig.tight_layout()
+    plt.show()
 
 
 if __name__ == "__main__":
