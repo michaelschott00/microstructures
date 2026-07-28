@@ -1,6 +1,7 @@
-import argparse
 import os
+from collections import Counter
 
+import click
 import pandas as pd
 from PIL import Image
 
@@ -28,32 +29,76 @@ def stratified_split(df, seed):
     return pd.concat(train_parts), pd.concat(dev_parts), pd.concat(test_parts)
 
 
-def main():
-    parser = argparse.ArgumentParser()
-    parser.add_argument(
-        "--n", type=int, required=True, help="number of samples to draw"
-    )
-    parser.add_argument("--seed", type=int, required=True, help="random seed")
-    parser.add_argument("--input_dir", type=str, required=True)
-    parser.add_argument("--output_dir", type=str, required=True)
-    parser.add_argument("--metadata_path", type=str, required=True)
-    args = parser.parse_args()
-
-    metadata = pd.read_csv(args.metadata_path)
-    files = os.listdir(args.input_dir)
+def split_dataset(n, seed, input_dir, output_dir, metadata_path):
+    metadata = pd.read_csv(metadata_path)
+    files = os.listdir(input_dir)
     metadata = metadata[metadata["image_url"].isin(files)]
 
-    sampled = stratified_sample(metadata, args.n, args.seed)
-    train, dev, test = stratified_split(sampled, args.seed)
+    sampled = stratified_sample(metadata, n, seed)
+    train, dev, test = stratified_split(sampled, seed)
 
     for split, split_df in [("train", train), ("dev", dev), ("test", test)]:
         for _, row in split_df.iterrows():
-            class_dir = os.path.join(args.output_dir, split, row["type"])
+            class_dir = os.path.join(output_dir, split, row["type"])
             os.makedirs(class_dir, exist_ok=True)
-            im = Image.open(os.path.join(args.input_dir, row["image_url"]))
+            im = Image.open(os.path.join(input_dir, row["image_url"]))
             resized = im.resize(SIZE, Image.Resampling.LANCZOS)
             resized.save(os.path.join(class_dir, row["image_url"]))
 
 
+@click.group()
+def cli():
+    pass
+
+
+@cli.command()
+@click.option("--n", type=int, required=True, help="Number of samples to draw")
+@click.option("--seed", type=int, required=True, help="Random seed")
+@click.option("--input-dir", type=str, required=True)
+@click.option("--output-dir", type=str, required=True)
+@click.option("--metadata-path", type=str, required=True)
+def split(n, seed, input_dir, output_dir, metadata_path):
+    """Stratified sample and split a dataset into train/dev/test."""
+    split_dataset(n, seed, input_dir, output_dir, metadata_path)
+
+
+@cli.command()
+@click.option("--input-dir", type=str, required=True)
+@click.option("--recurse", is_flag=True, help="Recurse into subdirectories")
+def sizes(input_dir, recurse):
+    """Print a table of image sizes and how often they occur."""
+    counts = Counter()
+    if recurse:
+        for root, _, filenames in os.walk(input_dir):
+            subdir = os.path.relpath(root, input_dir)
+            for filename in filenames:
+                with Image.open(os.path.join(root, filename)) as im:
+                    counts[(subdir, *im.size)] += 1
+    else:
+        for filename in os.listdir(input_dir):
+            with Image.open(os.path.join(input_dir, filename)) as im:
+                counts[(".", *im.size)] += 1
+
+    if recurse:
+        by_subdir = {}
+        for (subdir, width, height), count in counts.items():
+            by_subdir.setdefault(subdir, []).append(((width, height), count))
+
+        for subdir in sorted(by_subdir):
+            click.echo(subdir)
+            click.echo(f"{'width':>6} {'height':>6} {'count':>6}")
+            for (width, height), count in sorted(
+                by_subdir[subdir], key=lambda kv: -kv[1]
+            ):
+                click.echo(f"{width:>6} {height:>6} {count:>6}")
+            click.echo()
+    else:
+        click.echo(f"{'width':>6} {'height':>6} {'count':>6}")
+        for (_, width, height), count in sorted(
+            counts.items(), key=lambda kv: -kv[1]
+        ):
+            click.echo(f"{width:>6} {height:>6} {count:>6}")
+
+
 if __name__ == "__main__":
-    main()
+    cli()
