@@ -122,5 +122,41 @@ def sizes(input_dir):
     plt.show()
 
 
+@cli.command()
+@click.option("--input-dir", type=str, required=True)
+@click.option("--recurse", is_flag=True, help="Recurse into subdirectories")
+def sizetable(input_dir, recurse):
+    """Print a table of image sizes and how often they occur."""
+    counts = Counter()
+    if recurse:
+        for root, _, filenames in os.walk(input_dir):
+            subdir = os.path.relpath(root, input_dir)
+            for filename in filenames:
+                with Image.open(os.path.join(root, filename)) as im:
+                    counts[(subdir, *im.size)] += 1
+    else:
+        for filename in os.listdir(input_dir):
+            with Image.open(os.path.join(input_dir, filename)) as im:
+                counts[(".", *im.size)] += 1
+
+    if recurse:
+        by_subdir = {}
+        for (subdir, width, height), count in counts.items():
+            by_subdir.setdefault(subdir, []).append(((width, height), count))
+
+        for subdir in sorted(by_subdir):
+            click.echo(subdir)
+            click.echo(f"{'width':>6} {'height':>6} {'count':>6}")
+            for (width, height), count in sorted(
+                by_subdir[subdir], key=lambda kv: -kv[1]
+            ):
+                click.echo(f"{width:>6} {height:>6} {count:>6}")
+            click.echo()
+    else:
+        click.echo(f"{'width':>6} {'height':>6} {'count':>6}")
+        for (_, width, height), count in sorted(counts.items(), key=lambda kv: -kv[1]):
+            click.echo(f"{width:>6} {height:>6} {count:>6}")
+
+
 if __name__ == "__main__":
     cli()
