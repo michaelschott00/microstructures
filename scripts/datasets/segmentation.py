@@ -112,52 +112,6 @@ def overlay_mask(
     return overlay
 
 
-def overlap_tile(image: np.ndarray, label: np.ndarray, htile: int, wtile: int):
-    """Split an image/label pair using the U-Net overlap-tile strategy.
-
-    Each image tile is `(htile, wtile)` and includes a mirrored context
-    border around the corresponding label tile, whose size is the inner
-    (non-overlapping) region shared by neighboring image tiles.
-    """
-    margin_h = htile // 4
-    margin_w = wtile // 4
-    step_h = htile - 2 * margin_h
-    step_w = wtile - 2 * margin_w
-
-    height, width = label.shape[:2]
-    num_rows = math.ceil(height / step_h)
-    num_cols = math.ceil(width / step_w)
-    inner_h = num_rows * step_h
-    inner_w = num_cols * step_w
-
-    label_padded = np.pad(
-        label, ((0, inner_h - height), (0, inner_w - width)), mode="reflect"
-    )
-    image_padded = np.pad(
-        image,
-        (
-            (margin_h, inner_h - height + margin_h),
-            (margin_w, inner_w - width + margin_w),
-            (0, 0),
-        ),
-        mode="reflect",
-    )
-
-    tiles = []
-    for row in range(num_rows):
-        for col in range(num_cols):
-            image_tile = image_padded[
-                row * step_h : row * step_h + htile,
-                col * step_w : col * step_w + wtile,
-            ]
-            label_tile = label_padded[
-                row * step_h : (row + 1) * step_h,
-                col * step_w : (col + 1) * step_w,
-            ]
-            tiles.append((row, col, image_tile, label_tile))
-    return tiles
-
-
 @click.group()
 def cli():
     """Utilities for inspecting the segmentation dataset."""
@@ -294,49 +248,6 @@ def crop(input_dir: Path, output_dir: Path, image_dir: str, label_dir: str):
         cropped_image = image.crop((0, 0, width, mask_height))
         cropped_image.save(out_images_dir / image_path.name)
         label.save(out_labels_dir / label_path.name)
-
-
-@cli.command()
-@click.option(
-    "--input-dir",
-    required=True,
-    type=click.Path(exists=True, file_okay=False, path_type=Path),
-)
-@click.option(
-    "--output-dir",
-    required=True,
-    type=click.Path(file_okay=False, path_type=Path),
-)
-@click.option("-h", "--htile", required=True, type=int, help="Tile height.")
-@click.option("-w", "--wtile", required=True, type=int, help="Tile width.")
-@image_label_dir_options
-def tile(
-    input_dir: Path,
-    output_dir: Path,
-    htile: int,
-    wtile: int,
-    image_dir: str,
-    label_dir: str,
-):
-    """Tile images and masks using the U-Net overlap-tile strategy."""
-    pairs = find_pairs(input_dir, image_dir=image_dir, label_dir=label_dir)
-    if not pairs:
-        raise ValueError(f"No images found in {input_dir / image_dir}")
-
-    out_images_dir = output_dir / image_dir
-    out_labels_dir = output_dir / label_dir
-    out_images_dir.mkdir(parents=True, exist_ok=True)
-    out_labels_dir.mkdir(parents=True, exist_ok=True)
-
-    for image_path, label_path in pairs:
-        image = np.array(Image.open(image_path).convert("RGB"))
-        label = load_label(label_path)
-        for row, col, image_tile, label_tile in overlap_tile(
-            image, label, htile, wtile
-        ):
-            tile_name = f"{image_path.stem}_{row}_{col}.png"
-            Image.fromarray(image_tile).save(out_images_dir / tile_name)
-            Image.fromarray(label_tile).save(out_labels_dir / tile_name)
 
 
 if __name__ == "__main__":
