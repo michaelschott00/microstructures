@@ -13,6 +13,7 @@ jsonargparse[signatures]
 albumentations
 scikit-learn
 matplotlib
+click
 --extra-index-url https://download.pytorch.org/whl/cpu
 torchmetrics
 torch

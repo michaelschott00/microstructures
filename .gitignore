@@ -1,11 +1,5 @@
-# Project ignores
-data/
-pyrightconfig.json
-references/
-.rumdl_cache/
-archive/
+# Project specific files and directories
 lightning_logs/
-devops/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
