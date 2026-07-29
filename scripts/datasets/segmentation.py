@@ -278,6 +278,34 @@ def sizes(input_dir: Path, image_dir: str, label_dir: str):
     required=True,
     type=click.Path(exists=True, file_okay=False, path_type=Path),
 )
+def classes(input_dir: Path):
+    """Print the classes appearing in masks and their per-mask frequency."""
+    label_paths = sorted(input_dir.iterdir())
+    if not label_paths:
+        raise ValueError(f"No masks found in {input_dir}")
+
+    counts = Counter()
+    for label_path in label_paths:
+        label = load_label(label_path)
+        for class_id in np.unique(label):
+            if class_id == 0:
+                continue
+            counts[int(class_id)] += 1
+
+    header = f"{'class':>6}  {'num masks':>10}"
+    print(header)
+    print("-" * len(header))
+    for class_id, count in sorted(counts.items()):
+        print(f"{class_id:>6}  {count:>10}")
+    print(f"\n{len(counts)} classes found across {len(label_paths)} masks")
+
+
+@cli.command()
+@click.option(
+    "--input-dir",
+    required=True,
+    type=click.Path(exists=True, file_okay=False, path_type=Path),
+)
 @click.option(
     "--output-dir",
     required=True,
