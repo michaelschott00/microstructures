@@ -7,13 +7,12 @@ trainer:
   num_nodes: 1
   precision: 32-true
   logger:
-    class_path: lightning.pytorch.loggers.mlflow.MLFlowLogger
+    class_path: lightning.pytorch.loggers.wandb.WandbLogger
     init_args:
-      experiment_name: my_experiment
-      tracking_uri: sqlite:///mlflow.db  # or your MLflow tracking server URI
-      run_name: my_run
+      project: my_experiment
+      name: my_run
       tags:
-        model_type: baseline
+        - baseline
   callbacks: null
   fast_dev_run: false
   max_epochs: null

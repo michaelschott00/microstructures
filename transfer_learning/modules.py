@@ -2,52 +2,78 @@ import lightning.pytorch as pl
 import matplotlib
 import torch
 import torch.nn.functional as F
-import torchvision
 from sklearn.metrics import ConfusionMatrixDisplay
 from torch import nn
 
 matplotlib.use("Agg")  # crashed for other backends
-from typing import Dict, Literal, Union
+from typing import Dict, List, Literal, Union
 
 import matplotlib.pyplot as plt
 import numpy as np
 import segmentation_models_pytorch as smp
 import torchmetrics
 import torchmetrics.classification
-from lightning.pytorch.loggers import MLFlowLogger
+import wandb
+from lightning.pytorch.loggers import WandbLogger
 from lightning.pytorch.utilities.types import OptimizerLRScheduler
 
 from transfer_learning import util
 
 
-def _grid_to_numpy(grid: torch.Tensor) -> np.ndarray:
-    """Converts a CHW image grid tensor (as produced by torchvision.utils.make_grid) to a HWC uint8 numpy array."""
-    grid = grid.detach().cpu().clamp(0, 1)
-    return (grid.permute(1, 2, 0).numpy() * 255).astype(np.uint8)
+def _image_to_numpy(image: torch.Tensor) -> np.ndarray:
+    """Converts a single CHW image tensor to a HWC uint8 numpy array."""
+    image = image.detach().cpu().clamp(0, 1)
+    return (image.permute(1, 2, 0).numpy() * 255).astype(np.uint8)
 
 
-def _colorize_mask(mask: torch.Tensor, num_classes: int) -> torch.Tensor:
-    """Maps a batch of integer class-index masks to an RGB tensor for logging, so that masks with more
-    than one class don't get squashed into a single (meaningless) image channel.
+def _labeled_images(
+    X: torch.Tensor, y: torch.Tensor, num_images: int = 8
+) -> List["wandb.Image"]:
+    """Builds a list of wandb.Image objects with the corresponding class label as caption.
 
     Args:
-        mask: a tensor of shape (N, H, W) or (N, 1, H, W) containing integer class indices.
-        num_classes: the number of classes, used to build a consistent colormap.
+        X: a batch of images of shape (N, C, H, W).
+        y: a batch of integer class labels of shape (N,).
+        num_images: the maximum number of images to log.
+    """
+    n = min(num_images, X.shape[0])
+    return [
+        wandb.Image(_image_to_numpy(X[i]), caption=f"label: {y[i].item()}")
+        for i in range(n)
+    ]
 
-    Returns:
-        A float tensor of shape (N, 3, H, W) with values in [0, 1].
+
+def _mask_overlay_images(
+    X: torch.Tensor, mask: torch.Tensor, num_classes: int, num_images: int = 8
+) -> List["wandb.Image"]:
+    """Builds a list of wandb.Image objects with the segmentation mask overlaid using wandb's
+    native mask-overlay support (rather than baking the mask into the image as a separate colorized
+    tensor), so masks stay toggleable/inspectable in the wandb UI.
+
+    Args:
+        X: a batch of images of shape (N, C, H, W).
+        mask: a batch of integer class-index masks of shape (N, H, W) or (N, 1, H, W).
+        num_classes: the number of classes, used to build the class-label mapping.
+        num_images: the maximum number of images to log.
     """
     if mask.dim() == 4:
         mask = mask.squeeze(1)
     mask = mask.detach().cpu().long()
 
-    cmap = matplotlib.colormaps["tab20"].resampled(max(num_classes, 1))
-    colors = torch.tensor(
-        [cmap(i)[:3] for i in range(num_classes)], dtype=torch.float32
-    )  # (num_classes, 3)
-
-    rgb = colors[mask]  # (N, H, W, 3)
-    return rgb.permute(0, 3, 1, 2)  # (N, 3, H, W)
+    class_labels = {i: str(i) for i in range(max(num_classes, 2))}
+    n = min(num_images, X.shape[0])
+    return [
+        wandb.Image(
+            _image_to_numpy(X[i]),
+            masks={
+                "prediction": {
+                    "mask_data": mask[i].numpy(),
+                    "class_labels": class_labels,
+                }
+            },
+        )
+        for i in range(n)
+    ]
 
 
 class ClassificationModule(pl.LightningModule):
@@ -357,18 +383,16 @@ class ClassificationModule(pl.LightningModule):
         }
 
     def on_validation_epoch_end(self) -> None:
-        assert isinstance(self.logger, MLFlowLogger), (
-            "This hook requires an MLFlowLogger to be configured."
+        assert isinstance(self.logger, WandbLogger), (
+            "This hook requires a WandbLogger to be configured."
         )
 
         fig = plt.figure()
         ConfusionMatrixDisplay(self.val_confmat.compute().cpu().numpy()).plot(
             ax=fig.gca()
         )
-        self.logger.experiment.log_figure(
-            self.logger.run_id,
-            fig,
-            f"confusion_matrix/validation_{self.current_epoch}.png",
+        self.logger.experiment.log(
+            {"confusion_matrix/validation": wandb.Image(fig)},
         )
         plt.close(fig)
 
@@ -378,28 +402,24 @@ class ClassificationModule(pl.LightningModule):
         self, batch: torch.Tensor, batch_idx: int, dataloader_idx: int = 0
     ) -> None:
         if (self.current_epoch == 0) and (batch_idx == 0):
-            assert isinstance(self.logger, MLFlowLogger), (
-                "This hook requires an MLFlowLogger to be configured."
+            assert isinstance(self.logger, WandbLogger), (
+                "This hook requires a WandbLogger to be configured."
             )
             X, y = batch
-            self.logger.experiment.log_image(
-                self.logger.run_id,
-                _grid_to_numpy(torchvision.utils.make_grid(X)),
-                "input/train.png",
+            self.logger.experiment.log(
+                {"input/train": _labeled_images(X, y)},
             )
 
     def on_validation_batch_start(
         self, batch: torch.Tensor, batch_idx: int, dataloader_idx: int = 0
     ) -> None:
         if (self.current_epoch == 0) and (batch_idx == 0):
-            assert isinstance(self.logger, MLFlowLogger), (
-                "This hook requires an MLFlowLogger to be configured."
+            assert isinstance(self.logger, WandbLogger), (
+                "This hook requires a WandbLogger to be configured."
             )
             X, y = batch
-            self.logger.experiment.log_image(
-                self.logger.run_id,
-                _grid_to_numpy(torchvision.utils.make_grid(X)),
-                "input/validation.png",
+            self.logger.experiment.log(
+                {"input/validation": _labeled_images(X, y)},
             )
 
 
@@ -663,54 +683,38 @@ class SegmentationModule(pl.LightningModule):
         self, batch: torch.Tensor, batch_idx: int, dataloader_idx: int = 0
     ) -> None:
         if (self.current_epoch == 0) and (batch_idx == 0):
-            assert isinstance(self.logger, MLFlowLogger), (
-                "This hook requires an MLFlowLogger to be configured."
+            assert isinstance(self.logger, WandbLogger), (
+                "This hook requires a WandbLogger to be configured."
             )
             X, y = batch
-            self.logger.experiment.log_image(
-                self.logger.run_id,
-                _grid_to_numpy(torchvision.utils.make_grid(X)),
-                "input/train_imgs.png",
-            )
-            y_rgb = (
-                _colorize_mask(y, self.hparams["num_classes"])
-                if self.hparams["num_classes"] > 1
-                else y
-            )
-            self.logger.experiment.log_image(
-                self.logger.run_id,
-                _grid_to_numpy(torchvision.utils.make_grid(y_rgb)),
-                "input/train_masks.png",
+            self.logger.experiment.log(
+                {
+                    "input/train": _mask_overlay_images(
+                        X, y, self.hparams["num_classes"]
+                    )
+                },
             )
 
     def on_validation_batch_start(
         self, batch: torch.Tensor, batch_idx: int, dataloader_idx: int = 0
     ) -> None:
         if (self.current_epoch == 0) and (batch_idx == 0):
-            assert isinstance(self.logger, MLFlowLogger), (
-                "This hook requires an MLFlowLogger to be configured."
+            assert isinstance(self.logger, WandbLogger), (
+                "This hook requires a WandbLogger to be configured."
             )
             X, y = batch
-            self.logger.experiment.log_image(
-                self.logger.run_id,
-                _grid_to_numpy(torchvision.utils.make_grid(X)),
-                "input/validation_imgs.png",
-            )
-            y_rgb = (
-                _colorize_mask(y, self.hparams["num_classes"])
-                if self.hparams["num_classes"] > 1
-                else y
-            )
-            self.logger.experiment.log_image(
-                self.logger.run_id,
-                _grid_to_numpy(torchvision.utils.make_grid(y_rgb)),
-                "input/validation_masks.png",
+            self.logger.experiment.log(
+                {
+                    "input/validation": _mask_overlay_images(
+                        X, y, self.hparams["num_classes"]
+                    )
+                },
             )
 
     def on_train_epoch_end(self) -> None:
         """We allow freezing the encoder after a certain number of epochs. Also, we log the predicted masks of the model"""
-        assert isinstance(self.logger, MLFlowLogger), (
-            "This hook requires an MLFlowLogger to be configured."
+        assert isinstance(self.logger, WandbLogger), (
+            "This hook requires a WandbLogger to be configured."
         )
         assert self.X_t_train is not None, "X_t_train"
         assert self.X_t_dev is not None, "X_t_dev"
@@ -742,44 +746,26 @@ class SegmentationModule(pl.LightningModule):
                 pred_dev = F.softmax(dev_logits, dim=1).argmax(1).float()
 
         num_classes = self.hparams["num_classes"]
-        if num_classes > 1:
-            y_t_train_vis = _colorize_mask(self.y_t_train, num_classes)
-            y_t_dev_vis = _colorize_mask(self.y_t_dev, num_classes)
-            pred_train_vis = _colorize_mask(pred_train, num_classes)
-            pred_dev_vis = _colorize_mask(pred_dev, num_classes)
-        else:
-            y_t_train_vis, y_t_dev_vis = self.y_t_train, self.y_t_dev
-            pred_train_vis, pred_dev_vis = pred_train, pred_dev
 
         if self.current_epoch == 0:
-            self.logger.experiment.log_image(
-                self.logger.run_id,
-                _grid_to_numpy(torchvision.utils.make_grid(y_t_train_vis)),
-                "predictions/label/train.png",
-            )
-            self.logger.experiment.log_image(
-                self.logger.run_id,
-                _grid_to_numpy(torchvision.utils.make_grid(self.X_t_train)),
-                "predictions/image/train.png",
-            )
-            self.logger.experiment.log_image(
-                self.logger.run_id,
-                _grid_to_numpy(torchvision.utils.make_grid(y_t_dev_vis)),
-                "predictions/label/validation.png",
-            )
-            self.logger.experiment.log_image(
-                self.logger.run_id,
-                _grid_to_numpy(torchvision.utils.make_grid(self.X_t_dev)),
-                "predictions/image/validation.png",
+            self.logger.experiment.log(
+                {
+                    "predictions/train_ground_truth": _mask_overlay_images(
+                        self.X_t_train.cpu(), self.y_t_train, num_classes
+                    ),
+                    "predictions/validation_ground_truth": _mask_overlay_images(
+                        self.X_t_dev.cpu(), self.y_t_dev, num_classes
+                    ),
+                },
             )
 
-        self.logger.experiment.log_image(
-            self.logger.run_id,
-            _grid_to_numpy(torchvision.utils.make_grid(pred_train_vis)),
-            f"predictions/prediction/train_{self.current_epoch}.png",
-        )
-        self.logger.experiment.log_image(
-            self.logger.run_id,
-            _grid_to_numpy(torchvision.utils.make_grid(pred_dev_vis)),
-            f"predictions/prediction/validation_{self.current_epoch}.png",
+        self.logger.experiment.log(
+            {
+                "predictions/train": _mask_overlay_images(
+                    self.X_t_train.cpu(), pred_train, num_classes
+                ),
+                "predictions/validation": _mask_overlay_images(
+                    self.X_t_dev.cpu(), pred_dev, num_classes
+                ),
+            },
         )
