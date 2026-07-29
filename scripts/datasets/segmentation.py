@@ -14,6 +14,7 @@ from PIL import Image
 CMAP = plt.get_cmap("tab10")
 PAD_LABEL = 255
 PAD_COLOR = np.array([1.0, 0.0, 1.0])  # magenta
+PAD_IMAGE_COLOR = 255  # white
 
 
 def find_pairs(
@@ -93,6 +94,30 @@ def pad_label_to_shape(
     return np.pad(label, ((top, bottom), (left, right)), constant_values=PAD_LABEL)
 
 
+def pad_image_to_shape(
+    image: np.ndarray, shape: tuple[int, int], center: bool = False
+) -> np.ndarray:
+    """Pad an image to match `shape`, e.g. when the mask is larger than the image.
+
+    By default the image is assumed to occupy the top-left corner of the
+    target shape. Pass `center=True` when the image instead corresponds to
+    the center of the target shape. Padding is filled with white so colored
+    masks remain clearly visible on top of the padded parts.
+    """
+    height, width = shape
+    pad_height = max(height - image.shape[0], 0)
+    pad_width = max(width - image.shape[1], 0)
+    if pad_height == 0 and pad_width == 0:
+        return image
+    if center:
+        top, left = pad_height // 2, pad_width // 2
+    else:
+        top, left = 0, 0
+    bottom, right = pad_height - top, pad_width - left
+    pad_width_spec = ((top, bottom), (left, right)) + ((0, 0),) * (image.ndim - 2)
+    return np.pad(image, pad_width_spec, constant_values=PAD_IMAGE_COLOR)
+
+
 def _blend_colors(alpha: float, image: np.ndarray, color: np.ndarray) -> np.ndarray:
     return (1 - alpha) * image + alpha * color
 
@@ -134,7 +159,7 @@ def cli():
     help="Number of images to preview.",
 )
 @click.option(
-    "--pad-top-left",
+    "--pad-mask-corner",
     is_flag=True,
     default=False,
     help=(
@@ -144,7 +169,7 @@ def cli():
     ),
 )
 @click.option(
-    "--pad-center",
+    "--pad-mask-center",
     is_flag=True,
     default=False,
     help=(
@@ -153,12 +178,34 @@ def cli():
         "instead of requiring matching sizes."
     ),
 )
+@click.option(
+    "--pad-image-corner",
+    is_flag=True,
+    default=False,
+    help=(
+        "Pad images smaller than their mask to fit, treating the image as "
+        "covering the top-left corner of the mask, instead of requiring "
+        "matching sizes. Padding is filled with white."
+    ),
+)
+@click.option(
+    "--pad-image-center",
+    is_flag=True,
+    default=False,
+    help=(
+        "Pad images smaller than their mask to fit, treating the image as "
+        "covering the center of the mask, instead of requiring matching "
+        "sizes. Padding is filled with white."
+    ),
+)
 @image_label_dir_options
 def preview(
     input_dir: Path,
     num_images: int,
-    pad_top_left: bool,
-    pad_center: bool,
+    pad_mask_corner: bool,
+    pad_mask_center: bool,
+    pad_image_corner: bool,
+    pad_image_center: bool,
     image_dir: str,
     label_dir: str,
 ):
@@ -176,8 +223,14 @@ def preview(
     for ax, (image_path, label_path) in zip(axes, pairs):
         image = np.array(Image.open(image_path).convert("RGB"))
         label = load_label(label_path)
-        if pad_top_left or pad_center:
-            label = pad_label_to_shape(label, image.shape[:2], center=pad_center)
+        if pad_mask_corner or pad_mask_center:
+            label = pad_label_to_shape(
+                label, image.shape[:2], center=pad_mask_center
+            )
+        if pad_image_corner or pad_image_center:
+            image = pad_image_to_shape(
+                image, label.shape[:2], center=pad_image_center
+            )
         ax.imshow(overlay_mask(image, label))
         ax.set_title(image_path.stem, fontsize=9)
         ax.axis("off")
