@@ -117,8 +117,6 @@ class SegmentationDataset(Dataset):
             a list of all filenames of the masks (the corresponding image path can be restored from them)
         transform:
             an optional transformation that is applied to the raw image as well as the raw mask, combining augmentation and preprocessing e.g. RandomCrop, ToTensor
-        tiled:
-            whether to load patches or the full images
     """
 
     def __init__(
@@ -129,7 +127,6 @@ class SegmentationDataset(Dataset):
         img_dir: str = "Original",
         mask_dir: str = "Masks",
         transform: A.Compose | None = None,
-        tiled: bool = True,
     ) -> None:
         super().__init__()
 
@@ -517,7 +514,6 @@ class SegmentationDataModule(DataModule):
         sharpen_alpha: alpha range for random sharpen
         batch_size: batch size
         sample_size: sample size (NOT a proportion but the absolute size, i.e. if you specify 100, your train set will have 100 samples)
-        tiled: whether to use tiled images
     """
 
     def __init__(
@@ -545,13 +541,10 @@ class SegmentationDataModule(DataModule):
         # batching and sampling
         sample_size: int | None = None,
         batch_size: int = 32,
-        # tiling
-        tiled: bool = True,
     ):
         super().__init__(
             dataset_cls=SegmentationDataset,
             dataset_args={
-                "tiled": tiled,
                 "num_classes": num_classes,
                 "img_dir": img_dir,
                 "mask_dir": mask_dir,

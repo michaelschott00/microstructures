@@ -6,7 +6,6 @@ data:
   class_path: transfer_learning.data.SegmentationDataModule
   init_args:
     data_dir: data/segmentation_2
-    tiled: true
     num_workers: 2
     batch_size: 32
     size: [512, 512]
