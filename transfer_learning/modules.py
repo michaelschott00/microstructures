@@ -549,7 +549,7 @@ class SegmentationModule(pl.LightningModule):
         X, y = batch
 
         if self.hparams["num_classes"] > 1:
-            y = y.squeeze(1).long()  # magically makes the dimensions work out, I think
+            y = y.squeeze(1).long()
 
         if batch_idx == 0 and self.current_epoch == 0:
             n = min(5, len(X))
@@ -646,9 +646,13 @@ class SegmentationModule(pl.LightningModule):
         assert isinstance(self.logger, TensorBoardLogger), (
             "This hook requires a TensorBoardLogger to be configured."
         )
-        assert self.X_t_train is not None and self.X_t_dev is not None
+        assert self.X_t_train is not None, "X_t_train"
+        assert self.X_t_dev is not None, "X_t_dev"
+        assert self.y_t_train is not None, "y_t_train"
+        assert self.y_t_dev is not None, "y_t_dev"
 
         if self.current_epoch == self.hparams["freeze_encoder_after_epoch"]:
+            assert isinstance(self.model.encoder, nn.Module), type(self.model.encoder)
             util.freeze_encoder_layers(self.model.encoder, ignore_last=0)
 
         # visualize predicted masks

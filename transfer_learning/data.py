@@ -1,5 +1,5 @@
 import os
-from typing import Any, Callable, Dict, List, Literal, Tuple, Type
+from typing import Any, Dict, List, Literal, Tuple, Type
 
 import albumentations as A
 import cv2
@@ -34,8 +34,8 @@ class ClassificationDataset(Dataset):
         self,
         split: Literal["train", "dev", "test"],
         root_dir: str,
-        preprocessing: Callable[[np.ndarray], np.ndarray] | None = None,
-        augmentation: Callable[[np.ndarray], np.ndarray] | None = None,
+        preprocessing: A.Compose | None = None,
+        augmentation: A.Compose | None = None,
     ) -> None:
         super().__init__()
 
@@ -136,8 +136,8 @@ class SegmentationDataset(Dataset):
         split: Literal["train", "dev", "test"],
         root_dir: str,
         num_classes: int,
-        preprocessing: Callable[[np.ndarray], np.ndarray] | None = None,
-        augmentation: Callable[[np.ndarray], np.ndarray] | None = None,
+        preprocessing: A.Compose | None = None,
+        augmentation: A.Compose | None = None,
         tiled: bool = True,
     ) -> None:
         super().__init__()
@@ -184,9 +184,9 @@ class SegmentationDataset(Dataset):
             img_filename: the filename of the image to load
         """
         img = cv2.imread(img_filename)
-        img = cv2.cvtColor(
-            img, cv2.COLOR_BGR2RGB
-        )  # read images as RGB to apply imagenet preprocessing later
+        if img is None:
+            raise FileNotFoundError(f"File {img_filename} does not exist.")
+        img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
         return img
 
     def load_mask(self, mask_filename: str) -> np.ndarray:
@@ -195,9 +195,11 @@ class SegmentationDataset(Dataset):
         Args:
             mask_filename: the filename of the mask to load
         """
-        mask = cv2.imread(mask_filename, cv2.IMREAD_GRAYSCALE)[
-            ..., np.newaxis
-        ]  # having a channel dimension makes other steps easier
+        # having a channel dimension makes other steps easier
+        mask = cv2.imread(mask_filename, cv2.IMREAD_GRAYSCALE)
+        if mask is None:
+            raise FileNotFoundError(f"File {mask_filename} does not exist.")
+        mask = mask[..., np.newaxis]
         if self.num_classes == 1:
             mask = mask > 0  # threshold to binary mask
         return mask.astype(np.uint8)
@@ -246,7 +248,11 @@ class DataModule(pl.LightningDataModule):
         dataset_args: the arguments to pass to the dataset at instantiation
     """
 
-    def __init__(self, dataset_cls: Type[Dataset], dataset_args: Dict[str, Any]):
+    def __init__(
+        self,
+        dataset_cls: Type[ClassificationDataset] | Type[SegmentationDataset],
+        dataset_args: Dict[str, Any],
+    ):
         super().__init__()
         self.dataset_cls = dataset_cls
         self.dataset_args = dataset_args

@@ -63,7 +63,7 @@ A training run for segmentation could look as follows:
 python -m transfer_learning.train fit \
     --config configs/base.yaml \
     --config configs/task/segmentation_1.yaml \
-    --config configs/models/classification/vanilla-vgg16_bn.yaml \
+    --config configs/models/segmentation/vanilla-vgg16_bn.yaml \
     --config configs/optimization/adamw_basic.yaml \
     --config configs/pretraining/image-micronet.yaml \
     --config configs/augmentation/microscope.yaml
