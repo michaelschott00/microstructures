@@ -1,4 +1,5 @@
 import os
+import shutil
 from collections import Counter
 
 import click
@@ -30,6 +31,17 @@ def stratified_split(df, seed):
     return pd.concat(train_parts), pd.concat(dev_parts), pd.concat(test_parts)
 
 
+def prune_missing_classes(output_dir, splits):
+    class_sets = {
+        split: set(os.listdir(os.path.join(output_dir, split))) for split in splits
+    }
+    common_classes = set.intersection(*class_sets.values())
+
+    for split, classes in class_sets.items():
+        for class_name in classes - common_classes:
+            shutil.rmtree(os.path.join(output_dir, split, class_name))
+
+
 def split_dataset(n, seed, input_dir, output_dir, metadata_path):
     metadata = pd.read_csv(metadata_path)
     files = os.listdir(input_dir)
@@ -38,13 +50,16 @@ def split_dataset(n, seed, input_dir, output_dir, metadata_path):
     sampled = stratified_sample(metadata, n, seed)
     train, dev, test = stratified_split(sampled, seed)
 
-    for split, split_df in [("train", train), ("dev", dev), ("test", test)]:
+    splits = [("train", train), ("dev", dev), ("test", test)]
+    for split, split_df in splits:
         for _, row in split_df.iterrows():
             class_dir = os.path.join(output_dir, split, row["type"])
             os.makedirs(class_dir, exist_ok=True)
             im = Image.open(os.path.join(input_dir, row["image_url"]))
             resized = im.resize(SIZE, Image.Resampling.LANCZOS)
             resized.save(os.path.join(class_dir, row["image_url"]))
+
+    prune_missing_classes(output_dir, [split for split, _ in splits])
 
 
 @click.group()
