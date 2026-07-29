@@ -13,10 +13,17 @@ import matplotlib.pyplot as plt
 import segmentation_models_pytorch as smp
 import torchmetrics
 import torchmetrics.classification
-from lightning.pytorch.loggers import TensorBoardLogger
+import numpy as np
+from lightning.pytorch.loggers import MLFlowLogger
 from lightning.pytorch.utilities.types import OptimizerLRScheduler
 
 from transfer_learning import util
+
+
+def _grid_to_numpy(grid: torch.Tensor) -> np.ndarray:
+    """Converts a CHW image grid tensor (as produced by torchvision.utils.make_grid) to a HWC uint8 numpy array."""
+    grid = grid.detach().cpu().clamp(0, 1)
+    return (grid.permute(1, 2, 0).numpy() * 255).astype(np.uint8)
 
 
 class ClassificationModule(pl.LightningModule):
@@ -326,17 +333,20 @@ class ClassificationModule(pl.LightningModule):
         }
 
     def on_validation_epoch_end(self) -> None:
-        assert isinstance(self.logger, TensorBoardLogger), (
-            "This hook requires a TensorBoardLogger to be configured."
+        assert isinstance(self.logger, MLFlowLogger), (
+            "This hook requires an MLFlowLogger to be configured."
         )
 
         fig = plt.figure()
         ConfusionMatrixDisplay(self.val_confmat.compute().cpu().numpy()).plot(
             ax=fig.gca()
         )
-        self.logger.experiment.add_figure(
-            "confusion matrix/validation", fig, self.current_epoch
+        self.logger.experiment.log_figure(
+            self.logger.run_id,
+            fig,
+            f"confusion_matrix/validation_{self.current_epoch}.png",
         )
+        plt.close(fig)
 
         self.val_confmat.reset()
 
@@ -344,24 +354,28 @@ class ClassificationModule(pl.LightningModule):
         self, batch: torch.Tensor, batch_idx: int, dataloader_idx: int = 0
     ) -> None:
         if (self.current_epoch == 0) and (batch_idx == 0):
-            assert isinstance(self.logger, TensorBoardLogger), (
-                "This hook requires a TensorBoardLogger to be configured."
+            assert isinstance(self.logger, MLFlowLogger), (
+                "This hook requires an MLFlowLogger to be configured."
             )
             X, y = batch
-            self.logger.experiment.add_image(
-                "input/train", torchvision.utils.make_grid(X)
+            self.logger.experiment.log_image(
+                self.logger.run_id,
+                _grid_to_numpy(torchvision.utils.make_grid(X)),
+                "input/train.png",
             )
 
     def on_validation_batch_start(
         self, batch: torch.Tensor, batch_idx: int, dataloader_idx: int = 0
     ) -> None:
         if (self.current_epoch == 0) and (batch_idx == 0):
-            assert isinstance(self.logger, TensorBoardLogger), (
-                "This hook requires a TensorBoardLogger to be configured."
+            assert isinstance(self.logger, MLFlowLogger), (
+                "This hook requires an MLFlowLogger to be configured."
             )
             X, y = batch
-            self.logger.experiment.add_image(
-                "input/validation", torchvision.utils.make_grid(X)
+            self.logger.experiment.log_image(
+                self.logger.run_id,
+                _grid_to_numpy(torchvision.utils.make_grid(X)),
+                "input/validation.png",
             )
 
 
@@ -625,36 +639,44 @@ class SegmentationModule(pl.LightningModule):
         self, batch: torch.Tensor, batch_idx: int, dataloader_idx: int = 0
     ) -> None:
         if (self.current_epoch == 0) and (batch_idx == 0):
-            assert isinstance(self.logger, TensorBoardLogger), (
-                "This hook requires a TensorBoardLogger to be configured."
+            assert isinstance(self.logger, MLFlowLogger), (
+                "This hook requires an MLFlowLogger to be configured."
             )
             X, y = batch
-            self.logger.experiment.add_image(
-                "input/train_imgs", torchvision.utils.make_grid(X)
+            self.logger.experiment.log_image(
+                self.logger.run_id,
+                _grid_to_numpy(torchvision.utils.make_grid(X)),
+                "input/train_imgs.png",
             )
-            self.logger.experiment.add_image(
-                "input/train_masks", torchvision.utils.make_grid(y)
+            self.logger.experiment.log_image(
+                self.logger.run_id,
+                _grid_to_numpy(torchvision.utils.make_grid(y)),
+                "input/train_masks.png",
             )
 
     def on_validation_batch_start(
         self, batch: torch.Tensor, batch_idx: int, dataloader_idx: int = 0
     ) -> None:
         if (self.current_epoch == 0) and (batch_idx == 0):
-            assert isinstance(self.logger, TensorBoardLogger), (
-                "This hook requires a TensorBoardLogger to be configured."
+            assert isinstance(self.logger, MLFlowLogger), (
+                "This hook requires an MLFlowLogger to be configured."
             )
             X, y = batch
-            self.logger.experiment.add_image(
-                "input/validation_imgs", torchvision.utils.make_grid(X)
+            self.logger.experiment.log_image(
+                self.logger.run_id,
+                _grid_to_numpy(torchvision.utils.make_grid(X)),
+                "input/validation_imgs.png",
             )
-            self.logger.experiment.add_image(
-                "input/validation_masks", torchvision.utils.make_grid(y)
+            self.logger.experiment.log_image(
+                self.logger.run_id,
+                _grid_to_numpy(torchvision.utils.make_grid(y)),
+                "input/validation_masks.png",
             )
 
     def on_train_epoch_end(self) -> None:
         """We allow freezing the encoder after a certain number of epochs. Also, we log the predicted masks of the model"""
-        assert isinstance(self.logger, TensorBoardLogger), (
-            "This hook requires a TensorBoardLogger to be configured."
+        assert isinstance(self.logger, MLFlowLogger), (
+            "This hook requires an MLFlowLogger to be configured."
         )
         assert self.X_t_train is not None, "X_t_train"
         assert self.X_t_dev is not None, "X_t_dev"
@@ -686,34 +708,34 @@ class SegmentationModule(pl.LightningModule):
                 pred_dev = F.softmax(dev_logits, dim=1).argmax(1).float()
 
         if self.current_epoch == 0:
-            self.logger.experiment.add_image(
-                "predictions/label/train",
-                torchvision.utils.make_grid(self.y_t_train),
-                self.current_epoch,
+            self.logger.experiment.log_image(
+                self.logger.run_id,
+                _grid_to_numpy(torchvision.utils.make_grid(self.y_t_train)),
+                "predictions/label/train.png",
             )
-            self.logger.experiment.add_image(
-                "predictions/image/train",
-                torchvision.utils.make_grid(self.X_t_train),
-                self.current_epoch,
+            self.logger.experiment.log_image(
+                self.logger.run_id,
+                _grid_to_numpy(torchvision.utils.make_grid(self.X_t_train)),
+                "predictions/image/train.png",
             )
-            self.logger.experiment.add_image(
-                "predictions/label/validation",
-                torchvision.utils.make_grid(self.y_t_dev),
-                self.current_epoch,
+            self.logger.experiment.log_image(
+                self.logger.run_id,
+                _grid_to_numpy(torchvision.utils.make_grid(self.y_t_dev)),
+                "predictions/label/validation.png",
             )
-            self.logger.experiment.add_image(
-                "predictions/image/validation",
-                torchvision.utils.make_grid(self.X_t_dev),
-                self.current_epoch,
+            self.logger.experiment.log_image(
+                self.logger.run_id,
+                _grid_to_numpy(torchvision.utils.make_grid(self.X_t_dev)),
+                "predictions/image/validation.png",
             )
 
-        self.logger.experiment.add_image(
-            "predictions/prediction/train",
-            torchvision.utils.make_grid(pred_train),
-            self.current_epoch,
+        self.logger.experiment.log_image(
+            self.logger.run_id,
+            _grid_to_numpy(torchvision.utils.make_grid(pred_train)),
+            f"predictions/prediction/train_{self.current_epoch}.png",
         )
-        self.logger.experiment.add_image(
-            "predictions/prediction/validation",
-            torchvision.utils.make_grid(pred_dev),
-            self.current_epoch,
+        self.logger.experiment.log_image(
+            self.logger.run_id,
+            _grid_to_numpy(torchvision.utils.make_grid(pred_dev)),
+            f"predictions/prediction/validation_{self.current_epoch}.png",
         )
