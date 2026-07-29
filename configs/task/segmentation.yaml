@@ -1,7 +1,7 @@
 model:
   class_path: transfer_learning.modules.SegmentationModule
   init_args:
-    num_classes: 1
+    num_classes: 3
 data:
   class_path: transfer_learning.data.SegmentationDataModule
   init_args:
