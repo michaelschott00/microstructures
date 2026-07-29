@@ -452,17 +452,11 @@ class SegmentationModule(pl.LightningModule):
             "imagenet" if self.hparams["pretrained_weights"] == "imagenet" else None
         )
 
-        model = getattr(
-            smp, self.hparams["architecture"]
-        )(
-            encoder_name=self.hparams[
-                "encoder"
-            ],  # choose encoder, e.g. mobilenet_v2 or efficientnet-b7
+        model = getattr(smp, self.hparams["architecture"])(
+            encoder_name=self.hparams["encoder"],
             encoder_weights=initial_weights,
-            in_channels=3,  # model input channels (1 for gray-scale images, 3 for RGB, etc.)
-            classes=self.hparams[
-                "num_classes"
-            ],  # model output channels (number of classes in your dataset)
+            in_channels=3,
+            classes=self.hparams["num_classes"],
         )
 
         if self.hparams["pretrained_weights"] in ["micronet", "image-micronet"]:

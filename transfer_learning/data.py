@@ -107,9 +107,9 @@ class SegmentationDataset(Dataset):
     """A Dataset that loads and provides access to input images as well as their corresponding masks.
 
     Attributes:
-        MASK_DIR:
+        mask_dir:
             the directory relative to root_dir/split containing the masks
-        IMG_DIR:
+        img_dir:
             the directory relative to root_dir/split containing the images
         root_dir:
             the directory where the dataset is stored
@@ -121,14 +121,13 @@ class SegmentationDataset(Dataset):
             whether to load patches or the full images
     """
 
-    MASK_DIR = "Masks"
-    IMG_DIR = "Original"
-
     def __init__(
         self,
         split: Literal["train", "dev", "test"],
         root_dir: str,
         num_classes: int,
+        img_dir: str = "Original",
+        mask_dir: str = "Masks",
         transform: A.Compose | None = None,
         tiled: bool = True,
     ) -> None:
@@ -142,8 +141,8 @@ class SegmentationDataset(Dataset):
         self.root_dir = os.path.join(root_dir, split)
         assert os.path.exists(self.root_dir), f"split '{self.root_dir}' does not exist"
 
-        img_dir = os.path.join(self.root_dir, self.IMG_DIR)
-        mask_dir = os.path.join(self.root_dir, self.MASK_DIR)
+        img_dir = os.path.join(self.root_dir, img_dir)
+        mask_dir = os.path.join(self.root_dir, mask_dir)
         assert os.path.exists(img_dir), f"img_dir '{img_dir}' does not exist"
         assert os.path.exists(mask_dir), f"mask_dir '{mask_dir}' does not exist"
 
@@ -308,11 +307,15 @@ class DataModule(pl.LightningDataModule):
 
     def get_dev_transforms(self) -> A.Compose:
         """Returns the transforms to apply to the validation set samples."""
-        return A.Compose(self._get_pre_augmentation_steps() + self._get_preprocessing_steps())
+        return A.Compose(
+            self._get_pre_augmentation_steps() + self._get_preprocessing_steps()
+        )
 
     def get_test_transforms(self) -> A.Compose:
         """Returns the transforms to apply to the test set samples."""
-        return A.Compose(self._get_pre_augmentation_steps() + self._get_preprocessing_steps())
+        return A.Compose(
+            self._get_pre_augmentation_steps() + self._get_preprocessing_steps()
+        )
 
     def eval_dataloader_kwargs(self) -> Dict[str, Any]:
         """Returns extra keyword arguments for the dev/test dataloaders. Subclasses may override this,
@@ -521,6 +524,8 @@ class SegmentationDataModule(DataModule):
         self,
         # dataset
         data_dir: str,
+        img_dir: str,
+        mask_dir: str,
         num_classes: int = 1,
         # compute
         num_workers: int = 0,
@@ -545,7 +550,12 @@ class SegmentationDataModule(DataModule):
     ):
         super().__init__(
             dataset_cls=SegmentationDataset,
-            dataset_args={"tiled": tiled, "num_classes": num_classes},
+            dataset_args={
+                "tiled": tiled,
+                "num_classes": num_classes,
+                "img_dir": img_dir,
+                "mask_dir": mask_dir,
+            },
         )
 
         self.save_hyperparameters()

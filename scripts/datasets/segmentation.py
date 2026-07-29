@@ -1,6 +1,8 @@
 """Utilities for inspecting the segmentation dataset."""
 
 import math
+import random
+import shutil
 from collections import Counter
 from pathlib import Path
 
@@ -248,6 +250,93 @@ def crop(input_dir: Path, output_dir: Path, image_dir: str, label_dir: str):
         cropped_image = image.crop((0, 0, width, mask_height))
         cropped_image.save(out_images_dir / image_path.name)
         label.save(out_labels_dir / label_path.name)
+
+
+@cli.command()
+@click.option(
+    "--input-dir",
+    required=True,
+    type=click.Path(exists=True, file_okay=False, path_type=Path),
+)
+@click.option(
+    "--output-dir",
+    required=True,
+    type=click.Path(file_okay=False, path_type=Path),
+)
+@click.option(
+    "-t",
+    "--train",
+    "train_ratio",
+    required=True,
+    type=float,
+    help="Fraction of the dataset to put in the train split.",
+)
+@click.option(
+    "-d",
+    "--dev",
+    "dev_ratio",
+    required=True,
+    type=float,
+    help="Fraction of the dataset to put in the dev split.",
+)
+@click.option(
+    "-e",
+    "--test",
+    "test_ratio",
+    required=True,
+    type=float,
+    help="Fraction of the dataset to put in the test split.",
+)
+@click.option(
+    "--seed",
+    type=int,
+    default=0,
+    show_default=True,
+    help="Random seed used to shuffle the dataset before splitting.",
+)
+@image_label_dir_options
+def split(
+    input_dir: Path,
+    output_dir: Path,
+    train_ratio: float,
+    dev_ratio: float,
+    test_ratio: float,
+    seed: int,
+    image_dir: str,
+    label_dir: str,
+):
+    """Split a dataset into train, dev and test sets."""
+    ratio_sum = train_ratio + dev_ratio + test_ratio
+    if not math.isclose(ratio_sum, 1.0, abs_tol=1e-6):
+        raise ValueError(
+            f"--train, --dev and --test must sum to 1.0, got {ratio_sum}"
+        )
+
+    pairs = find_pairs(input_dir, image_dir=image_dir, label_dir=label_dir)
+    if not pairs:
+        raise ValueError(f"No images found in {input_dir / image_dir}")
+
+    random.Random(seed).shuffle(pairs)
+
+    num_pairs = len(pairs)
+    num_train = round(num_pairs * train_ratio)
+    num_dev = round(num_pairs * dev_ratio)
+
+    splits = {
+        "train": pairs[:num_train],
+        "dev": pairs[num_train : num_train + num_dev],
+        "test": pairs[num_train + num_dev :],
+    }
+
+    for split_name, split_pairs in splits.items():
+        out_images_dir = output_dir / split_name / image_dir
+        out_labels_dir = output_dir / split_name / label_dir
+        out_images_dir.mkdir(parents=True, exist_ok=True)
+        out_labels_dir.mkdir(parents=True, exist_ok=True)
+        for image_path, label_path in split_pairs:
+            shutil.copy2(image_path, out_images_dir / image_path.name)
+            shutil.copy2(label_path, out_labels_dir / label_path.name)
+        print(f"{split_name}: {len(split_pairs)} pairs")
 
 
 if __name__ == "__main__":
