@@ -1,12 +1,13 @@
 model:
   class_path: transfer_learning.modules.SegmentationModule
   init_args:
-    num_classes: 3
+    num_classes: 5
 data:
   class_path: transfer_learning.data.SegmentationDataModule
   init_args:
     data_dir: data/segmentation
     img_dir: images
+    num_classes: ${model.init_args.num_classes}
     mask_dir: labels
     num_workers: 2
     batch_size: 32

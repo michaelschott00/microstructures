@@ -604,6 +604,7 @@ class SegmentationModule(pl.LightningModule):
             self.X_t_dev, self.y_t_dev = X.detach().cpu(), y.detach().cpu()
 
         logits = self.predict_full_image(X[0]).unsqueeze(0)
+        print(logits.unique(), y.unique())
         loss = self.loss_func(logits, y)
 
         self.val_iou(logits, y)
