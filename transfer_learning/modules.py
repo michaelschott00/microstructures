@@ -10,10 +10,10 @@ matplotlib.use("Agg")  # crashed for other backends
 from typing import Dict, Literal, Union
 
 import matplotlib.pyplot as plt
+import numpy as np
 import segmentation_models_pytorch as smp
 import torchmetrics
 import torchmetrics.classification
-import numpy as np
 from lightning.pytorch.loggers import MLFlowLogger
 from lightning.pytorch.utilities.types import OptimizerLRScheduler
 
@@ -604,7 +604,6 @@ class SegmentationModule(pl.LightningModule):
             self.X_t_dev, self.y_t_dev = X.detach().cpu(), y.detach().cpu()
 
         logits = self.predict_full_image(X[0]).unsqueeze(0)
-        print(logits.unique(), y.unique())
         loss = self.loss_func(logits, y)
 
         self.val_iou(logits, y)
