@@ -26,6 +26,30 @@ def _grid_to_numpy(grid: torch.Tensor) -> np.ndarray:
     return (grid.permute(1, 2, 0).numpy() * 255).astype(np.uint8)
 
 
+def _colorize_mask(mask: torch.Tensor, num_classes: int) -> torch.Tensor:
+    """Maps a batch of integer class-index masks to an RGB tensor for logging, so that masks with more
+    than one class don't get squashed into a single (meaningless) image channel.
+
+    Args:
+        mask: a tensor of shape (N, H, W) or (N, 1, H, W) containing integer class indices.
+        num_classes: the number of classes, used to build a consistent colormap.
+
+    Returns:
+        A float tensor of shape (N, 3, H, W) with values in [0, 1].
+    """
+    if mask.dim() == 4:
+        mask = mask.squeeze(1)
+    mask = mask.detach().cpu().long()
+
+    cmap = matplotlib.colormaps["tab20"].resampled(max(num_classes, 1))
+    colors = torch.tensor(
+        [cmap(i)[:3] for i in range(num_classes)], dtype=torch.float32
+    )  # (num_classes, 3)
+
+    rgb = colors[mask]  # (N, H, W, 3)
+    return rgb.permute(0, 3, 1, 2)  # (N, 3, H, W)
+
+
 class ClassificationModule(pl.LightningModule):
     """A classification lightning module for classification.
 
@@ -648,9 +672,14 @@ class SegmentationModule(pl.LightningModule):
                 _grid_to_numpy(torchvision.utils.make_grid(X)),
                 "input/train_imgs.png",
             )
+            y_rgb = (
+                _colorize_mask(y, self.hparams["num_classes"])
+                if self.hparams["num_classes"] > 1
+                else y
+            )
             self.logger.experiment.log_image(
                 self.logger.run_id,
-                _grid_to_numpy(torchvision.utils.make_grid(y)),
+                _grid_to_numpy(torchvision.utils.make_grid(y_rgb)),
                 "input/train_masks.png",
             )
 
@@ -667,9 +696,14 @@ class SegmentationModule(pl.LightningModule):
                 _grid_to_numpy(torchvision.utils.make_grid(X)),
                 "input/validation_imgs.png",
             )
+            y_rgb = (
+                _colorize_mask(y, self.hparams["num_classes"])
+                if self.hparams["num_classes"] > 1
+                else y
+            )
             self.logger.experiment.log_image(
                 self.logger.run_id,
-                _grid_to_numpy(torchvision.utils.make_grid(y)),
+                _grid_to_numpy(torchvision.utils.make_grid(y_rgb)),
                 "input/validation_masks.png",
             )
 
@@ -707,10 +741,20 @@ class SegmentationModule(pl.LightningModule):
                 )
                 pred_dev = F.softmax(dev_logits, dim=1).argmax(1).float()
 
+        num_classes = self.hparams["num_classes"]
+        if num_classes > 1:
+            y_t_train_vis = _colorize_mask(self.y_t_train, num_classes)
+            y_t_dev_vis = _colorize_mask(self.y_t_dev, num_classes)
+            pred_train_vis = _colorize_mask(pred_train, num_classes)
+            pred_dev_vis = _colorize_mask(pred_dev, num_classes)
+        else:
+            y_t_train_vis, y_t_dev_vis = self.y_t_train, self.y_t_dev
+            pred_train_vis, pred_dev_vis = pred_train, pred_dev
+
         if self.current_epoch == 0:
             self.logger.experiment.log_image(
                 self.logger.run_id,
-                _grid_to_numpy(torchvision.utils.make_grid(self.y_t_train)),
+                _grid_to_numpy(torchvision.utils.make_grid(y_t_train_vis)),
                 "predictions/label/train.png",
             )
             self.logger.experiment.log_image(
@@ -720,7 +764,7 @@ class SegmentationModule(pl.LightningModule):
             )
             self.logger.experiment.log_image(
                 self.logger.run_id,
-                _grid_to_numpy(torchvision.utils.make_grid(self.y_t_dev)),
+                _grid_to_numpy(torchvision.utils.make_grid(y_t_dev_vis)),
                 "predictions/label/validation.png",
             )
             self.logger.experiment.log_image(
@@ -731,11 +775,11 @@ class SegmentationModule(pl.LightningModule):
 
         self.logger.experiment.log_image(
             self.logger.run_id,
-            _grid_to_numpy(torchvision.utils.make_grid(pred_train)),
+            _grid_to_numpy(torchvision.utils.make_grid(pred_train_vis)),
             f"predictions/prediction/train_{self.current_epoch}.png",
         )
         self.logger.experiment.log_image(
             self.logger.run_id,
-            _grid_to_numpy(torchvision.utils.make_grid(pred_dev)),
+            _grid_to_numpy(torchvision.utils.make_grid(pred_dev_vis)),
             f"predictions/prediction/validation_{self.current_epoch}.png",
         )

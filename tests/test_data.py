@@ -16,27 +16,37 @@ class TestClassificationDataset:
 
     def test_rejects_missing_root_dir(self, tmp_path):
         with pytest.raises(AssertionError):
-            ClassificationDataset(split="train", root_dir=str(tmp_path / "does_not_exist"))
+            ClassificationDataset(
+                split="train", root_dir=str(tmp_path / "does_not_exist")
+            )
 
     def test_discovers_classes_from_subfolders(self, classification_data_dir):
-        dataset = ClassificationDataset(split="train", root_dir=str(classification_data_dir))
+        dataset = ClassificationDataset(
+            split="train", root_dir=str(classification_data_dir)
+        )
 
         assert set(dataset.LABELS.keys()) == {"class_a", "class_b"}
 
     def test_len_counts_all_files_across_classes(self, classification_data_dir):
-        dataset = ClassificationDataset(split="train", root_dir=str(classification_data_dir))
+        dataset = ClassificationDataset(
+            split="train", root_dir=str(classification_data_dir)
+        )
 
         assert len(dataset) == 6  # 2 classes * 3 images
 
     def test_getitem_returns_image_and_correct_label(self, classification_data_dir):
-        dataset = ClassificationDataset(split="train", root_dir=str(classification_data_dir))
+        dataset = ClassificationDataset(
+            split="train", root_dir=str(classification_data_dir)
+        )
 
         for img, label in dataset:
             assert img.shape == (32, 32, 3)
             assert label in dataset.LABELS.values()
 
     def test_getitem_rejects_slicing(self, classification_data_dir):
-        dataset = ClassificationDataset(split="train", root_dir=str(classification_data_dir))
+        dataset = ClassificationDataset(
+            split="train", root_dir=str(classification_data_dir)
+        )
 
         with pytest.raises(AssertionError):
             dataset[0:2]
@@ -120,7 +130,9 @@ class TestDataModuleAugmentationAndPreprocessing:
         assert len(module.get_dev_transforms().transforms) == expected_len
         assert len(module.get_test_transforms().transforms) == expected_len
 
-    def test_preprocessing_resizes_and_converts_to_tensor(self, classification_data_dir):
+    def test_preprocessing_resizes_and_converts_to_tensor(
+        self, classification_data_dir
+    ):
         module = self._make_classification_module(classification_data_dir)
         img = np.zeros((32, 32, 3), dtype=np.uint8)
 
@@ -137,7 +149,9 @@ class TestDataModuleAugmentationAndPreprocessing:
         assert len(module.dev_dataset) == 6
 
     def test_setup_fit_respects_sample_size(self, classification_data_dir):
-        module = self._make_classification_module(classification_data_dir, sample_size=2)
+        module = self._make_classification_module(
+            classification_data_dir, sample_size=2
+        )
 
         module.setup(stage="fit")
 
@@ -161,6 +175,8 @@ class TestSegmentationDataModule:
     def test_setup_fit_builds_train_and_dev_datasets(self, segmentation_data_dir):
         module = SegmentationDataModule(
             data_dir=str(segmentation_data_dir),
+            img_dir="Original",
+            mask_dir="Masks",
             size=[16, 16],
             imagenet_preprocessing=False,
             num_classes=1,
