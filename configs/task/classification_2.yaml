@@ -7,7 +7,8 @@ data:
   init_args:
     data_dir: data/classification_2
     num_workers: 2
-    size: [484, 645]
+    # size: [484, 645]
+    size: [484, 484]
 trainer:
   callbacks:
     - class_path: lightning.pytorch.callbacks.early_stopping.EarlyStopping

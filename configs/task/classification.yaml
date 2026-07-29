@@ -1,13 +1,13 @@
 model:
   class_path: transfer_learning.modules.ClassificationModule
   init_args:
-    num_classes: 10
+    num_classes: 9
 data:
   class_path: transfer_learning.data.ClassificationDataModule
   init_args:
     data_dir: data/classification
     num_workers: 2
-    size: [192, 256]  # 130x130 is close to the average size of the images
+    size: [192, 192]
 trainer:
   callbacks:
     - class_path: lightning.pytorch.callbacks.early_stopping.EarlyStopping

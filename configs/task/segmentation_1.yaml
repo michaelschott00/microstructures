@@ -9,7 +9,7 @@ data:
     tiled: true
     num_workers: 2
     batch_size: 32
-    size: [256, 256]
+    size: [512, 512]
 trainer:
   log_every_n_steps: 1
   callbacks:
