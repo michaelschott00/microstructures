@@ -24,18 +24,15 @@ class ClassificationDataset(Dataset):
             the split of the dataset to load (train, dev or test)
         root_dir:
             the directory where the dataset is stored
-        preprocessing:
-            a function that is applied to the raw or augmented image for preprocessing (e.g. ToTensor)
-        augmentation:
-            a function that is applied to the raw image for augmentation (e.g. RandomCrop)
+        transform:
+            a function that is applied to the raw image, combining augmentation and preprocessing (e.g. RandomCrop, ToTensor)
     """
 
     def __init__(
         self,
         split: Literal["train", "dev", "test"],
         root_dir: str,
-        preprocessing: A.Compose | None = None,
-        augmentation: A.Compose | None = None,
+        transform: A.Compose | None = None,
     ) -> None:
         super().__init__()
 
@@ -47,12 +44,12 @@ class ClassificationDataset(Dataset):
         self.root_dir = os.path.join(root_dir, split)
         assert os.path.exists(self.root_dir), f"split '{self.root_dir}' does not exist"
 
+        # encode labels by enumerating the folders in the root folder
         self.LABELS: Dict[str, int] = {
             subfolder: index
             for index, subfolder in enumerate(self._get_subfolders(self.root_dir))
-        }  # encode labels by enumerating the folders in the root folder
-        self.preprocessing = preprocessing
-        self.augmentation = augmentation
+        }
+        self.transform = transform
         self.file_list = self._get_filenames(
             self.root_dir, subfolders=list(self.LABELS.keys())
         )
@@ -73,13 +70,9 @@ class ClassificationDataset(Dataset):
         assert img is not None
         img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
 
-        # apply augmentation transform
-        if self.augmentation:
-            img = self.augmentation(image=img)["image"]
-
-        # apply preprocessing transform
-        if self.preprocessing:
-            img = self.preprocessing(image=img)["image"]
+        # apply transform
+        if self.transform:
+            img = self.transform(image=img)["image"]
 
         # parse label from filepath and convert to int
         label = self.LABELS[os.path.basename(os.path.dirname(filename))]
@@ -123,7 +116,7 @@ class SegmentationDataset(Dataset):
         file_list:
             a list of all filenames of the masks (the corresponding image path can be restored from them)
         transform:
-            an optional transformation that is applied to the raw image as well as the raw mask e.g. ToTensor
+            an optional transformation that is applied to the raw image as well as the raw mask, combining augmentation and preprocessing e.g. RandomCrop, ToTensor
         tiled:
             whether to load patches or the full images
     """
@@ -136,8 +129,7 @@ class SegmentationDataset(Dataset):
         split: Literal["train", "dev", "test"],
         root_dir: str,
         num_classes: int,
-        preprocessing: A.Compose | None = None,
-        augmentation: A.Compose | None = None,
+        transform: A.Compose | None = None,
         tiled: bool = True,
     ) -> None:
         super().__init__()
@@ -147,7 +139,7 @@ class SegmentationDataset(Dataset):
 
         assert os.path.exists(root_dir), f"root_dir '{root_dir}' does not exist"
 
-        self.root_dir = os.path.join(root_dir, "tiled" if tiled else "raw", split)
+        self.root_dir = os.path.join(root_dir, split)
         assert os.path.exists(self.root_dir), f"split '{self.root_dir}' does not exist"
 
         img_dir = os.path.join(self.root_dir, self.IMG_DIR)
@@ -170,8 +162,7 @@ class SegmentationDataset(Dataset):
         self.file_list = list(zip(imgs, masks))
 
         self.num_classes = num_classes
-        self.preprocessing = preprocessing
-        self.augmentation = augmentation
+        self.transform = transform
 
     def __len__(self) -> int:
         """Returns the number of samples in the dataset."""
@@ -219,14 +210,9 @@ class SegmentationDataset(Dataset):
         img = self.load_image(img_filename)
         mask = self.load_mask(mask_filename)
 
-        # apply mask transform
-        if self.augmentation:
-            sample = self.augmentation(image=img, mask=mask)
-            img, mask = sample["image"], sample["mask"]
-
-        # apply preprocessing transform
-        if self.preprocessing:
-            sample = self.preprocessing(image=img, mask=mask)
+        # apply transform
+        if self.transform:
+            sample = self.transform(image=img, mask=mask)
             img, mask = sample["image"], sample["mask"]
 
         return img, mask
@@ -257,13 +243,21 @@ class DataModule(pl.LightningDataModule):
         self.dataset_cls = dataset_cls
         self.dataset_args = dataset_args
 
-    def get_train_augmentations(self) -> A.Compose:
-        """Returns the augmentations to apply to the training set samples."""
-        train_transform = []
-
-        train_transform.append(
-            A.Resize(height=self.hparams["size"][0], width=self.hparams["size"][1])
+    def _get_pre_augmentation_steps(self) -> List[Any]:
+        """Returns the task-specific steps that are applied before augmentation, e.g. cropping to a task-specific shape."""
+        raise NotImplementedError(
+            "Subclasses must implement task-specific pre-augmentation steps"
         )
+
+    def get_train_transforms(self) -> A.Compose:
+        """
+        Returns the transforms to apply to the training set samples: task-specific preprocessing,
+        followed by augmentation, followed by generic preprocessing.
+
+        This method offers a variety of agumentations that can be used for classification and segmentation tasks.
+        Control which ones to apply using yaml config files.
+        """
+        train_transform = self._get_pre_augmentation_steps()
 
         if self.hparams["crop_ratio"]:
             # mimic zooming
@@ -308,15 +302,17 @@ class DataModule(pl.LightningDataModule):
                 )
             )
 
+        train_transform += self._get_preprocessing_steps()
+
         return A.Compose(train_transform)
 
-    def get_dev_augmentations(self) -> A.Compose | None:
-        """Returns the augmentations to apply to the validation set samples."""
-        return None
+    def get_dev_transforms(self) -> A.Compose:
+        """Returns the transforms to apply to the validation set samples."""
+        return A.Compose(self._get_pre_augmentation_steps() + self._get_preprocessing_steps())
 
-    def get_test_augmentations(self) -> A.Compose | None:
-        """Returns the augmentations to apply to the test set samples."""
-        return None
+    def get_test_transforms(self) -> A.Compose:
+        """Returns the transforms to apply to the test set samples."""
+        return A.Compose(self._get_pre_augmentation_steps() + self._get_preprocessing_steps())
 
     # Preprocessing
     def _to_tensor(self, x: np.ndarray, **kwargs) -> torch.Tensor:
@@ -324,13 +320,17 @@ class DataModule(pl.LightningDataModule):
         pytorch's modules expect. That is, we convert from HWC to CHW."""
         return torch.tensor(x.transpose(2, 0, 1).astype("float32"))
 
-    def get_preprocessing(self) -> A.Compose:
-        """Returns the default preprocessing pipeline."""
+    def _get_preprocessing_steps(self) -> List[Any]:
+        """Returns the default preprocessing steps, applied after augmentation."""
 
         preprocessing_steps = []
 
         # this applies imagenet normalization
         if self.hparams["imagenet_preprocessing"]:
+            if self.hparams["encoder"] is None:
+                raise ValueError(
+                    "Please provide an encoder to apply pre-training-specific pre-processing"
+                )
             preprocessing_steps += [
                 A.Lambda(
                     image=smp.encoders.get_preprocessing_fn(
@@ -344,19 +344,7 @@ class DataModule(pl.LightningDataModule):
             A.Lambda(image=self._to_tensor, mask=self._to_tensor),
         ]
 
-        return A.Compose(preprocessing_steps)
-
-    def get_train_preprocessing(self) -> A.Compose:
-        """Returns the preprocessing pipeline to apply to the training set samples."""
-        return self.get_preprocessing()
-
-    def get_dev_preprocessing(self) -> A.Compose:
-        """Returns the preprocessing pipeline to apply to the validation set samples."""
-        return self.get_preprocessing()
-
-    def get_test_preprocessing(self) -> A.Compose:
-        """Returns the preprocessing pipeline to apply to the test set samples."""
-        return self.get_preprocessing()
+        return preprocessing_steps
 
     # Setup
 
@@ -366,15 +354,13 @@ class DataModule(pl.LightningDataModule):
             self.train_dataset = self.dataset_cls(
                 split="train",
                 root_dir=self.hparams["data_dir"],
-                augmentation=self.get_train_augmentations(),
-                preprocessing=self.get_train_preprocessing(),
+                transform=self.get_train_transforms(),
                 **self.dataset_args,
             )
             self.dev_dataset = self.dataset_cls(
                 split="dev",
                 root_dir=self.hparams["data_dir"],
-                augmentation=self.get_dev_augmentations(),
-                preprocessing=self.get_dev_preprocessing(),
+                transform=self.get_dev_transforms(),
                 **self.dataset_args,
             )
             if self.hparams["sample_size"]:
@@ -389,8 +375,7 @@ class DataModule(pl.LightningDataModule):
             self.dev_dataset = self.dataset_cls(
                 split="dev",
                 root_dir=self.hparams["data_dir"],
-                augmentation=self.get_dev_augmentations(),
-                preprocessing=self.get_dev_preprocessing(),
+                transform=self.get_dev_transforms(),
                 **self.dataset_args,
             )
 
@@ -398,8 +383,7 @@ class DataModule(pl.LightningDataModule):
             self.test_dataset = self.dataset_cls(
                 split="test",
                 root_dir=self.hparams["data_dir"],
-                augmentation=self.get_test_augmentations(),
-                preprocessing=self.get_test_preprocessing(),
+                transform=self.get_test_transforms(),
                 **self.dataset_args,
             )
 
@@ -482,6 +466,18 @@ class ClassificationDataModule(DataModule):
 
         self.save_hyperparameters()
 
+    def _random_square_crop(self, img: np.ndarray, **kwargs) -> np.ndarray:
+        """Randomly crops the image to a square based on its smaller edge."""
+        height, width = img.shape[:2]
+        crop_size = min(height, width)
+        y = np.random.randint(0, height - crop_size + 1)
+        x = np.random.randint(0, width - crop_size + 1)
+        return img[y : y + crop_size, x : x + crop_size]
+
+    def _get_pre_augmentation_steps(self) -> List[Any]:
+        """Returns the classification-specific preprocessing steps: a random square crop based on the smaller edge."""
+        return [A.Lambda(image=self._random_square_crop)]
+
 
 class SegmentationDataModule(DataModule):
     """Same as data module, but adapted for the segmentation task.
@@ -539,3 +535,9 @@ class SegmentationDataModule(DataModule):
         )
 
         self.save_hyperparameters()
+
+    def _get_pre_augmentation_steps(self) -> List[Any]:
+        """Returns the segmentation-specific preprocessing steps: a random crop to the configured `size`."""
+        return [
+            A.RandomCrop(height=self.hparams["size"][0], width=self.hparams["size"][1])
+        ]

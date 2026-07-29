@@ -105,21 +105,26 @@ class TestDataModuleAugmentationAndPreprocessing:
             random_rotation=True,
         )
 
-        assert len(augmented.get_train_augmentations().transforms) > len(
-            bare.get_train_augmentations().transforms
+        assert len(augmented.get_train_transforms().transforms) > len(
+            bare.get_train_transforms().transforms
         )
 
-    def test_dev_and_test_augmentations_are_disabled(self, classification_data_dir):
+    def test_dev_and_test_transforms_have_no_augmentation_steps(
+        self, classification_data_dir
+    ):
         module = self._make_classification_module(classification_data_dir)
 
-        assert module.get_dev_augmentations() is None
-        assert module.get_test_augmentations() is None
+        expected_len = len(
+            module._get_pre_augmentation_steps() + module._get_preprocessing_steps()
+        )
+        assert len(module.get_dev_transforms().transforms) == expected_len
+        assert len(module.get_test_transforms().transforms) == expected_len
 
     def test_preprocessing_resizes_and_converts_to_tensor(self, classification_data_dir):
         module = self._make_classification_module(classification_data_dir)
         img = np.zeros((32, 32, 3), dtype=np.uint8)
 
-        result = module.get_preprocessing()(image=img)["image"]
+        result = module.get_dev_transforms()(image=img)["image"]
 
         assert tuple(result.shape) == (3, 16, 16)
 

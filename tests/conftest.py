@@ -32,8 +32,8 @@ def segmentation_data_dir(tmp_path):
     """Builds a tiny tiled segmentation dataset with train/dev/test splits."""
     root = tmp_path / "segmentation"
     for split in ["train", "dev", "test"]:
-        img_dir = root / "tiled" / split / "Original"
-        mask_dir = root / "tiled" / split / "Masks"
+        img_dir = root / split / "Original"
+        mask_dir = root / split / "Masks"
         img_dir.mkdir(parents=True)
         mask_dir.mkdir(parents=True)
         for i in range(3):
