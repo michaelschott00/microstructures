@@ -27,10 +27,6 @@ compared to ImageNet pretraining.
 |         |                   |          | ResNet50 | MicroNet          | 0.46 |
 |         |                   |          | ResNet50 | ImageNet-MicroNet | 0.65 |
 
-### Low-data results
-
-- [ ] Re-run evaluation (waiting for github pipeline)
-
 ## Usage
 
 ### Setup
