@@ -545,6 +545,22 @@ class SegmentationModule(pl.LightningModule):
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         return self.model(x)
 
+    def predict_full_image(self, image: torch.Tensor) -> torch.Tensor:
+        """Predicts the logits for a single, full-sized image by tiling it into patches of the size
+        the model was trained on (`SegmentationDataModule`'s `size` parameter), running the model on
+        each tile, and stitching the resulting logits back together.
+
+        Args:
+            image: a single preprocessed image of shape (C, H, W).
+        """
+        tile_size = self.trainer.datamodule.hparams["size"]
+        return util.tile_and_predict(
+            predict_fn=self.forward,
+            image=image,
+            tile_size=tile_size,
+            num_classes=self.hparams["num_classes"],
+        )
+
     def training_step(self, batch: torch.Tensor, batch_idx: int) -> torch.Tensor:
         X, y = batch
 
@@ -571,15 +587,15 @@ class SegmentationModule(pl.LightningModule):
         self, batch: torch.Tensor, batch_idx: int
     ) -> Dict[str, torch.Tensor]:
         X, y = batch
+        assert X.shape[0] == 1, "full-image evaluation requires a batch size of 1"
 
         if self.hparams["num_classes"] > 1:
             y = y.squeeze(1).long()
 
         if batch_idx == 0 and self.current_epoch == 0:
-            n = min(5, len(X))
-            self.X_t_dev, self.y_t_dev = X.detach().cpu()[:n], y.detach().cpu()[:n]
+            self.X_t_dev, self.y_t_dev = X.detach().cpu(), y.detach().cpu()
 
-        logits = self.forward(X)
+        logits = self.predict_full_image(X[0]).unsqueeze(0)
         loss = self.loss_func(logits, y)
 
         self.val_iou(logits, y)
@@ -593,15 +609,15 @@ class SegmentationModule(pl.LightningModule):
 
     def test_step(self, batch: torch.Tensor, batch_idx: int) -> Dict[str, torch.Tensor]:
         X, y = batch
+        assert X.shape[0] == 1, "full-image evaluation requires a batch size of 1"
 
         if self.hparams["num_classes"] > 1:
             y = y.squeeze(1).long()
 
         if batch_idx == 0 and self.current_epoch == 0:
-            n = min(5, len(X))
-            self.X_t_dev, self.y_t_dev = X.detach().cpu()[:n], y.detach().cpu()[:n]
+            self.X_t_dev, self.y_t_dev = X.detach().cpu(), y.detach().cpu()
 
-        logits = self.forward(X)
+        logits = self.predict_full_image(X[0]).unsqueeze(0)
         loss = self.loss_func(logits, y)
 
         self.test_iou(logits, y)
@@ -660,24 +676,20 @@ class SegmentationModule(pl.LightningModule):
         self.X_t_dev = self.X_t_dev.to(self.device)
 
         with torch.no_grad():
+            # X_t_dev is a full-sized image, so it must go through tiled inference just like in validation_step
+            dev_logits = self.predict_full_image(self.X_t_dev[0]).unsqueeze(0).cpu()
             if self.hparams["num_classes"] == 1:
                 pred_train = (
                     F.sigmoid(self.forward(self.X_t_train).detach().cpu()) > 0.5
                 ).float()
-                pred_dev = (
-                    F.sigmoid(self.forward(self.X_t_dev).detach().cpu()) > 0.5
-                ).float()
+                pred_dev = (F.sigmoid(dev_logits) > 0.5).float()
             else:
                 pred_train = (
                     F.softmax(self.forward(self.X_t_train).detach().cpu(), dim=1)
                     .argmax(1)
                     .float()
                 )
-                pred_dev = (
-                    F.softmax(self.forward(self.X_t_dev).detach().cpu(), dim=1)
-                    .argmax(1)
-                    .float()
-                )
+                pred_dev = F.softmax(dev_logits, dim=1).argmax(1).float()
 
         if self.current_epoch == 0:
             self.logger.experiment.add_image(

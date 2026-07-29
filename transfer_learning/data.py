@@ -314,14 +314,24 @@ class DataModule(pl.LightningDataModule):
         """Returns the transforms to apply to the test set samples."""
         return A.Compose(self._get_pre_augmentation_steps() + self._get_preprocessing_steps())
 
+    def eval_dataloader_kwargs(self) -> Dict[str, Any]:
+        """Returns extra keyword arguments for the dev/test dataloaders. Subclasses may override this,
+        e.g. to force a batch size of 1 when samples are not all the same size."""
+        return {"batch_size": self.hparams["batch_size"]}
+
     # Preprocessing
     def _to_tensor(self, x: np.ndarray, **kwargs) -> torch.Tensor:
         """Converts the images, which are initially numpy arrays, to pytorch tensors and transposes them to the shape
         pytorch's modules expect. That is, we convert from HWC to CHW."""
         return torch.tensor(x.transpose(2, 0, 1).astype("float32"))
 
-    def _get_preprocessing_steps(self) -> List[Any]:
-        """Returns the default preprocessing steps, applied after augmentation."""
+    def _get_preprocessing_steps(self, resize: bool = True) -> List[Any]:
+        """Returns the default preprocessing steps, applied after augmentation.
+
+        Args:
+            resize: whether to resize to `size`. Set to False to keep the sample at its
+                original resolution, e.g. for tiled full-image evaluation.
+        """
 
         preprocessing_steps = []
 
@@ -339,8 +349,12 @@ class DataModule(pl.LightningDataModule):
                 ),
             ]
 
+        if resize:
+            preprocessing_steps += [
+                A.Resize(height=self.hparams["size"][0], width=self.hparams["size"][1])
+            ]
+
         preprocessing_steps += [
-            A.Resize(height=self.hparams["size"][0], width=self.hparams["size"][1]),
             A.Lambda(image=self._to_tensor, mask=self._to_tensor),
         ]
 
@@ -403,16 +417,16 @@ class DataModule(pl.LightningDataModule):
         """Returns the dataloader for the validation set."""
         return DataLoader(
             self.dev_dataset,
-            batch_size=self.hparams["batch_size"],
             num_workers=self.hparams["num_workers"],
+            **self.eval_dataloader_kwargs(),
         )
 
     def test_dataloader(self) -> DataLoader:
         """Returns the dataloader for the test set."""
         return DataLoader(
             self.test_dataset,
-            batch_size=self.hparams["batch_size"],
             num_workers=self.hparams["num_workers"],
+            **self.eval_dataloader_kwargs(),
         )
 
 
@@ -541,3 +555,18 @@ class SegmentationDataModule(DataModule):
         return [
             A.RandomCrop(height=self.hparams["size"][0], width=self.hparams["size"][1])
         ]
+
+    def get_dev_transforms(self) -> A.Compose:
+        """Returns the transforms for the validation set. Unlike training, we evaluate on the full,
+        un-cropped image (at its original resolution) so that it can be tiled and stitched back
+        together for evaluation. See `SegmentationModule` for the tiling/stitching logic."""
+        return A.Compose(self._get_preprocessing_steps(resize=False))
+
+    def get_test_transforms(self) -> A.Compose:
+        """Returns the transforms for the test set. See `get_dev_transforms`."""
+        return A.Compose(self._get_preprocessing_steps(resize=False))
+
+    def eval_dataloader_kwargs(self) -> Dict[str, Any]:
+        """Full images are not necessarily all the same size, so they cannot be batched together
+        for tiled full-image evaluation."""
+        return {"batch_size": 1}
