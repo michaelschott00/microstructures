@@ -14,7 +14,7 @@ albumentations
 scikit-learn
 matplotlib
 click
-wandb
+aim
 omegaconf
 --extra-index-url https://download.pytorch.org/whl/cpu
 torchmetrics

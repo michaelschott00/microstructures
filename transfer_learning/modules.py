@@ -13,8 +13,8 @@ import numpy as np
 import segmentation_models_pytorch as smp
 import torchmetrics
 import torchmetrics.classification
-import wandb
-from lightning.pytorch.loggers import WandbLogger
+from aim import Image as AimImage
+from aim.pytorch_lightning import AimLogger
 from lightning.pytorch.utilities.types import OptimizerLRScheduler
 
 from transfer_learning import util
@@ -28,8 +28,8 @@ def _image_to_numpy(image: torch.Tensor) -> np.ndarray:
 
 def _labeled_images(
     X: torch.Tensor, y: torch.Tensor, num_images: int = 8
-) -> List["wandb.Image"]:
-    """Builds a list of wandb.Image objects with the corresponding class label as caption.
+) -> List[AimImage]:
+    """Builds a list of aim.Image objects with the corresponding class label as caption.
 
     Args:
         X: a batch of images of shape (N, C, H, W).
@@ -38,17 +38,17 @@ def _labeled_images(
     """
     n = min(num_images, X.shape[0])
     return [
-        wandb.Image(_image_to_numpy(X[i]), caption=f"label: {y[i].item()}")
+        AimImage(_image_to_numpy(X[i]), caption=f"label: {y[i].item()}")
         for i in range(n)
     ]
 
 
 def _mask_overlay_images(
     X: torch.Tensor, mask: torch.Tensor, num_classes: int, num_images: int = 8
-) -> List["wandb.Image"]:
-    """Builds a list of wandb.Image objects with the segmentation mask overlaid using wandb's
-    native mask-overlay support (rather than baking the mask into the image as a separate colorized
-    tensor), so masks stay toggleable/inspectable in the wandb UI.
+) -> List[AimImage]:
+    """Builds a list of aim.Image objects with the segmentation mask overlaid onto the image, since
+    aim (unlike wandb) has no native mask-overlay support, so the mask is baked in as a colorized,
+    alpha-blended layer using matplotlib's colormap.
 
     Args:
         X: a batch of images of shape (N, C, H, W).
@@ -60,20 +60,15 @@ def _mask_overlay_images(
         mask = mask.squeeze(1)
     mask = mask.detach().cpu().long()
 
-    class_labels = {i: str(i) for i in range(max(num_classes, 2))}
+    cmap = plt.get_cmap("tab20", max(num_classes, 2))
     n = min(num_images, X.shape[0])
-    return [
-        wandb.Image(
-            _image_to_numpy(X[i]),
-            masks={
-                "prediction": {
-                    "mask_data": mask[i].numpy(),
-                    "class_labels": class_labels,
-                }
-            },
-        )
-        for i in range(n)
-    ]
+    images = []
+    for i in range(n):
+        image = _image_to_numpy(X[i]).astype(np.float32)
+        mask_rgb = (cmap(mask[i].numpy())[..., :3] * 255).astype(np.float32)
+        overlay = (0.5 * image + 0.5 * mask_rgb).astype(np.uint8)
+        images.append(AimImage(overlay))
+    return images
 
 
 class ClassificationModule(pl.LightningModule):
@@ -383,16 +378,16 @@ class ClassificationModule(pl.LightningModule):
         }
 
     def on_validation_epoch_end(self) -> None:
-        assert isinstance(self.logger, WandbLogger), (
-            "This hook requires a WandbLogger to be configured."
+        assert isinstance(self.logger, AimLogger), (
+            "This hook requires an AimLogger to be configured."
         )
 
         fig = plt.figure()
         ConfusionMatrixDisplay(self.val_confmat.compute().cpu().numpy()).plot(
             ax=fig.gca()
         )
-        self.logger.experiment.log(
-            {"confusion_matrix/validation": wandb.Image(fig)},
+        self.logger.experiment.track(
+            AimImage(fig), name="confusion_matrix/validation"
         )
         plt.close(fig)
 
@@ -402,24 +397,22 @@ class ClassificationModule(pl.LightningModule):
         self, batch: torch.Tensor, batch_idx: int, dataloader_idx: int = 0
     ) -> None:
         if (self.current_epoch == 0) and (batch_idx == 0):
-            assert isinstance(self.logger, WandbLogger), (
-                "This hook requires a WandbLogger to be configured."
+            assert isinstance(self.logger, AimLogger), (
+                "This hook requires an AimLogger to be configured."
             )
             X, y = batch
-            self.logger.experiment.log(
-                {"input/train": _labeled_images(X, y)},
-            )
+            self.logger.experiment.track(_labeled_images(X, y), name="input/train")
 
     def on_validation_batch_start(
         self, batch: torch.Tensor, batch_idx: int, dataloader_idx: int = 0
     ) -> None:
         if (self.current_epoch == 0) and (batch_idx == 0):
-            assert isinstance(self.logger, WandbLogger), (
-                "This hook requires a WandbLogger to be configured."
+            assert isinstance(self.logger, AimLogger), (
+                "This hook requires an AimLogger to be configured."
             )
             X, y = batch
-            self.logger.experiment.log(
-                {"input/validation": _labeled_images(X, y)},
+            self.logger.experiment.track(
+                _labeled_images(X, y), name="input/validation"
             )
 
 
@@ -683,38 +676,32 @@ class SegmentationModule(pl.LightningModule):
         self, batch: torch.Tensor, batch_idx: int, dataloader_idx: int = 0
     ) -> None:
         if (self.current_epoch == 0) and (batch_idx == 0):
-            assert isinstance(self.logger, WandbLogger), (
-                "This hook requires a WandbLogger to be configured."
+            assert isinstance(self.logger, AimLogger), (
+                "This hook requires an AimLogger to be configured."
             )
             X, y = batch
-            self.logger.experiment.log(
-                {
-                    "input/train": _mask_overlay_images(
-                        X, y, self.hparams["num_classes"]
-                    )
-                },
+            self.logger.experiment.track(
+                _mask_overlay_images(X, y, self.hparams["num_classes"]),
+                name="input/train",
             )
 
     def on_validation_batch_start(
         self, batch: torch.Tensor, batch_idx: int, dataloader_idx: int = 0
     ) -> None:
         if (self.current_epoch == 0) and (batch_idx == 0):
-            assert isinstance(self.logger, WandbLogger), (
-                "This hook requires a WandbLogger to be configured."
+            assert isinstance(self.logger, AimLogger), (
+                "This hook requires an AimLogger to be configured."
             )
             X, y = batch
-            self.logger.experiment.log(
-                {
-                    "input/validation": _mask_overlay_images(
-                        X, y, self.hparams["num_classes"]
-                    )
-                },
+            self.logger.experiment.track(
+                _mask_overlay_images(X, y, self.hparams["num_classes"]),
+                name="input/validation",
             )
 
     def on_train_epoch_end(self) -> None:
         """We allow freezing the encoder after a certain number of epochs. Also, we log the predicted masks of the model"""
-        assert isinstance(self.logger, WandbLogger), (
-            "This hook requires a WandbLogger to be configured."
+        assert isinstance(self.logger, AimLogger), (
+            "This hook requires an AimLogger to be configured."
         )
         assert self.X_t_train is not None, "X_t_train"
         assert self.X_t_dev is not None, "X_t_dev"
@@ -748,24 +735,20 @@ class SegmentationModule(pl.LightningModule):
         num_classes = self.hparams["num_classes"]
 
         if self.current_epoch == 0:
-            self.logger.experiment.log(
-                {
-                    "predictions/train_ground_truth": _mask_overlay_images(
-                        self.X_t_train.cpu(), self.y_t_train, num_classes
-                    ),
-                    "predictions/validation_ground_truth": _mask_overlay_images(
-                        self.X_t_dev.cpu(), self.y_t_dev, num_classes
-                    ),
-                },
+            self.logger.experiment.track(
+                _mask_overlay_images(self.X_t_train.cpu(), self.y_t_train, num_classes),
+                name="predictions/train_ground_truth",
+            )
+            self.logger.experiment.track(
+                _mask_overlay_images(self.X_t_dev.cpu(), self.y_t_dev, num_classes),
+                name="predictions/validation_ground_truth",
             )
 
-        self.logger.experiment.log(
-            {
-                "predictions/train": _mask_overlay_images(
-                    self.X_t_train.cpu(), pred_train, num_classes
-                ),
-                "predictions/validation": _mask_overlay_images(
-                    self.X_t_dev.cpu(), pred_dev, num_classes
-                ),
-            },
+        self.logger.experiment.track(
+            _mask_overlay_images(self.X_t_train.cpu(), pred_train, num_classes),
+            name="predictions/train",
+        )
+        self.logger.experiment.track(
+            _mask_overlay_images(self.X_t_dev.cpu(), pred_dev, num_classes),
+            name="predictions/validation",
         )

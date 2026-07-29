@@ -7,12 +7,10 @@ trainer:
   num_nodes: 1
   precision: 32-true
   logger:
-    class_path: lightning.pytorch.loggers.wandb.WandbLogger
+    class_path: aim.pytorch_lightning.AimLogger
     init_args:
-      project: my_experiment
-      name: my_run
-      tags:
-        - baseline
+      experiment: my_experiment
+      run_name: my_run
   callbacks: null
   fast_dev_run: false
   max_epochs: null
