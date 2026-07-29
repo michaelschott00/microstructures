@@ -41,6 +41,38 @@ Install required packages with
 pip install -r requirements.txt
 ```
 
+### Example Datasets
+
+The original datasets used in this work are not public. As replacements, example datasets can be downloaded from the following sources:
+
+- [Example classification images](https://springernature.figshare.com/articles/dataset/Steel_microscopy_images_PNG_/13135625?backTo=%2Fcollections%2FAachen-Heerlen_Annotated_Steel_Microstructure_Dataset%2F5185004&file=26094926)
+- [Example classification labels](https://springernature.figshare.com/articles/dataset/Metadata_of_the_steel_samples/13135622?backTo=%2Fcollections%2FAachen-Heerlen_Annotated_Steel_Microstructure_Dataset%2F5185004&file=25214927)
+- [Example segmentation data](https://github.com/ari-dasci/OD-MetalDAM#labeled-dataset)
+
+After downloading, the datasets can be split into train/val/test sets using the provided scripts:
+
+```sh
+python scripts/datasets/classification.py split \
+    --n 1000 \  # Optional, reduces training time
+    --seed 43 \
+    --input-dir <download-path>/PNG \
+    --metadata-path <download-path>/nature_scidata_steel_metadata.csv \
+    --output-dir <output-dir>
+```
+
+```sh
+# Remove metadata bar at the bottom
+python scripts/datasets/segmentation.py crop \
+    --input-dir <download-path> \
+    --output-dir <output-dir-1>
+
+# Split into train/dev/test sets
+python scripts/datasets/segmentation.py split \
+    --input-dir <output-dir-1> \
+    --output-dir <output-dir-2> \
+    --train 0.7 --dev 0.15 --test 0.15
+```
+
 ### Classification Example
 
 The following command trains a network for microstructure classification using [VGG-16](https://arxiv.org/abs/1409.1556) with [BatchNorm](https://arxiv.org/abs/1502.03167), [ImageNet](https://www.image-net.org/) and [MicroNet](https://github.com/nasa/pretrained-microscopy-models) pretraining using the [AdamW](https://arxiv.org/abs/1711.05101) optimizer and data augmentation:
