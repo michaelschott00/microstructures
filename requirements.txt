@@ -1,5 +1,3 @@
-azure-ai-ml
-azure-identity
 Pillow
 numpy
 git+https://github.com/nasa/pretrained-microscopy-models
@@ -9,13 +7,10 @@ segmentation-models-pytorch
 tqdm
 opencv-python
 lightning
-python-dotenv
 jsonargparse[signatures]
 albumentations
 scikit-learn
 matplotlib
-click
-aim
 omegaconf
 --extra-index-url https://download.pytorch.org/whl/cpu
 torchmetrics

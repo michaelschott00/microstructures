@@ -1,7 +1,6 @@
 from lightning.pytorch import LightningModule, Trainer
 from lightning.pytorch.callbacks.early_stopping import EarlyStopping
 from lightning.pytorch.cli import LightningCLI, SaveConfigCallback
-from lightning.pytorch.loggers import TensorBoardLogger
 from mldb.store import RunStore
 
 from transfer_learning.data import ClassificationDataModule, SegmentationDataModule
@@ -16,7 +15,10 @@ class MicrostructuresCLI(LightningCLI):
         uri = self.store.open_directory(self.run_id)
 
         config = self.config[self.subcommand] if self.subcommand else self.config
-        config.trainer.logger = TensorBoardLogger(save_dir=uri, name="", version="")
+        config.trainer.logger = {
+            "class_path": "lightning.pytorch.loggers.TensorBoardLogger",
+            "init_args": {"save_dir": uri, "name": "", "version": ""},
+        }
 
     def after_instantiate_classes(self) -> None:
         """Exposes the run's store and run_id on the trainer so modules can reach them via `self.trainer.store`/`self.trainer.run_id`."""
