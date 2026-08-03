@@ -95,7 +95,7 @@ class ClassificationModule(pl.LightningModule):
         num_classes: The number of classes to classify.
         pretrained_weights: The pretrained weights to use. Must be one of ['none', 'imagenet', 'micronet', 'image-micronet'].
         optimizer: The optimizer to use. Currently implemented are ['adamw', 'sgd'] although only adamw is tested.
-        scheduler: The scheduler to use. Currently implemented are ['none', 'cosine', 'step'] although none of them are tested.
+        scheduler: The scheduler to use. Currently implemented are ['none', 'cosine', 'step'].
         lr: The learning rate to use. Can be a float or a dict with keys 'encoder' and 'other'.
         weight_decay: The weight decay to use.
         T_max: The T_max parameter for the cosine annealing scheduler.
@@ -398,16 +398,32 @@ class ClassificationModule(pl.LightningModule):
             "This hook requires a TensorBoardLogger to be configured."
         )
 
+        confmat = self.val_confmat.compute().cpu().numpy()
+
         fig = plt.figure()
-        ConfusionMatrixDisplay(self.val_confmat.compute().cpu().numpy()).plot(
-            ax=fig.gca()
-        )
+        ConfusionMatrixDisplay(confmat).plot(ax=fig.gca())
         self.logger.experiment.add_figure(
             "confusion_matrix/validation", fig, self.current_epoch
         )
         plt.close(fig)
 
+        self._last_val_confmat = confmat
         self.val_confmat.reset()
+
+    def on_validation_end(self) -> None:
+        """Caches the scalar validation metrics from this epoch for storing once training finishes."""
+        self._last_val_metrics = {
+            name: value.item()
+            for name, value in self.trainer.callback_metrics.items()
+            if value.numel() == 1
+        }
+
+    def on_fit_end(self) -> None:
+        """Stores the validation metrics and confusion matrix from the final validation epoch."""
+        self.trainer.store.store(
+            self.trainer.run_id,
+            {"val_metrics": self._last_val_metrics, "val_confmat": self._last_val_confmat},
+        )
 
     def on_train_batch_start(
         self, batch: torch.Tensor, batch_idx: int, dataloader_idx: int = 0
@@ -723,6 +739,20 @@ class SegmentationModule(pl.LightningModule):
                 self.hparams["num_classes"],
                 self.current_epoch,
             )
+
+    def on_validation_end(self) -> None:
+        """Caches the scalar validation metrics from this epoch for storing once training finishes."""
+        self._last_val_metrics = {
+            name: value.item()
+            for name, value in self.trainer.callback_metrics.items()
+            if value.numel() == 1
+        }
+
+    def on_fit_end(self) -> None:
+        """Stores the validation metrics from the final validation epoch."""
+        self.trainer.store.store(
+            self.trainer.run_id, {"val_metrics": self._last_val_metrics}
+        )
 
     def on_train_epoch_end(self) -> None:
         """We allow freezing the encoder after a certain number of epochs. Also, we log the predicted masks of the model"""
