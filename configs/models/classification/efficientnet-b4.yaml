@@ -1,0 +1,6 @@
+model:
+  init_args:
+    encoder: efficientnet-b4
+data:
+  init_args:
+    encoder: efficientnet-b4

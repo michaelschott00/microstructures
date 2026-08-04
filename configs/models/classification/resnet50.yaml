@@ -1,0 +1,6 @@
+model:
+  init_args:
+    encoder: resnet50
+data:
+  init_args:
+    encoder: resnet50

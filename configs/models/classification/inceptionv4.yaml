@@ -1,0 +1,6 @@
+model:
+  init_args:
+    encoder: inceptionv4
+data:
+  init_args:
+    encoder: inceptionv4
