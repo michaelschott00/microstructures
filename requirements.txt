@@ -12,7 +12,6 @@ albumentations
 scikit-learn
 matplotlib
 omegaconf
---extra-index-url https://download.pytorch.org/whl/cpu
 torchmetrics
 torch
 torchvision

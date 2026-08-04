@@ -88,6 +88,22 @@ def _log_mask_overlay_images(
         writer.add_image(f"{tag}/{i}", overlay, step, dataformats="HWC")
 
 
+class _EncoderClassifier(nn.Module):
+    """Wraps a segmentation_models_pytorch encoder with global average pooling and a linear
+    classification head, so it can be used as a classification model regardless of the spatial
+    size of its feature maps."""
+
+    def __init__(self, encoder: nn.Module, num_classes: int) -> None:
+        super().__init__()
+        self.encoder = encoder
+        self.pool = nn.AdaptiveAvgPool2d(1)
+        self.fc = nn.Linear(encoder.out_channels[-1], num_classes)
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        features = self.encoder(x)[-1]  # smp encoders return the feature maps of every stage
+        return self.fc(self.pool(features).flatten(1))
+
+
 class ClassificationModule(pl.LightningModule):
     """A classification lightning module for classification.
 
@@ -195,46 +211,36 @@ class ClassificationModule(pl.LightningModule):
     def create_classification_model(
         self, encoder: str, pretrained_weights: str
     ) -> nn.Module:
-        """Loads the encoder model and replaces the last layer with a linear layer with the correct number of classes.
+        """Builds an encoder via segmentation_models_pytorch's encoder registry and attaches a
+        global-average-pool + linear classification head.
 
         Also takes care of freezing layers if specified.
         A further expansion of this function could allow initializing the last couple of layers randomly.
 
         Args:
-            encoder: The encoder to use. Make sure that the pretrained weights are available for it.
+            encoder: The encoder to use. Must be one of segmentation_models_pytorch's supported
+                encoder names (see `smp.encoders.encoders`). Make sure that the pretrained weights
+                are available for it.
             pretrained_weights: The pretrained weights to use. Must be one of ['none', 'imagenet', 'micronet', 'image-micronet']. If 'none', the model is initialized randomly.
         """
-        if pretrained_weights == "none":
-            model = torch.hub.load("pytorch/vision:v0.6.0", encoder, weights=None)
-        elif pretrained_weights == "imagenet":
-            model = torch.hub.load(
-                "pytorch/vision:v0.6.0", encoder, weights="DEFAULT"
-            )  # DEFAULT usually specifies imagenet weights
-        elif pretrained_weights in ["micronet", "image-micronet"]:
-            model = torch.hub.load("pytorch/vision:v0.6.0", encoder, weights=None)
-            state_dict = util.load_micronet_weights(encoder, pretrained_weights)
-            model.load_state_dict(
-                state_dict, strict=False
-            )  # strict=False ignores parameters that don't match the model
-        else:
+        if pretrained_weights not in ["none", "imagenet", "micronet", "image-micronet"]:
             raise NotImplementedError(
                 f"Pretrained weights {pretrained_weights} are not supported."
             )
 
+        smp_weights = "imagenet" if pretrained_weights == "imagenet" else None
+        backbone = smp.encoders.get_encoder(encoder, weights=smp_weights)
+
+        if pretrained_weights in ["micronet", "image-micronet"]:
+            state_dict = util.load_micronet_weights(encoder, pretrained_weights)
+            backbone.load_state_dict(
+                state_dict, strict=False
+            )  # strict=False ignores parameters that don't match the model
+
+        model = _EncoderClassifier(backbone, self.hparams["num_classes"])
+
         if self.hparams["train_last"] is not None:
             util.freeze_encoder_layers(model, self.hparams["train_last"])
-
-        # different architectures name their classification head differently
-        if "resnet" in encoder:
-            model.fc = nn.Linear(model.fc.in_features, self.hparams["num_classes"])
-        elif "vgg" in encoder:
-            model.classifier = nn.Linear(
-                model.classifier[0].in_features, self.hparams["num_classes"]
-            )
-        else:
-            raise NotImplementedError(
-                f"Encoder architecture {encoder} needs some work to be supported. Please update the encoder creation function where this assertion is thrown."
-            )
 
         return model
 
@@ -244,7 +250,7 @@ class ClassificationModule(pl.LightningModule):
             encoder_group = []
             classifier_group = []
             for name, parameter_groups in self.named_parameters():
-                if not ("fc" in name or "classifier" in name):
+                if not name.startswith("model.fc"):
                     encoder_group.append(
                         {
                             "params": parameter_groups,
