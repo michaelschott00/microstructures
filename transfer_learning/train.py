@@ -1,3 +1,6 @@
+from typing import Any
+
+from jsonargparse import Namespace
 from lightning.pytorch import LightningModule, Trainer
 from lightning.pytorch.callbacks.early_stopping import EarlyStopping
 from lightning.pytorch.cli import LightningArgumentParser, LightningCLI, SaveConfigCallback
@@ -5,6 +8,23 @@ from mldb.store import RunStore
 
 from transfer_learning.data import ClassificationDataModule, SegmentationDataModule
 from transfer_learning.modules import ClassificationModule, SegmentationModule
+
+
+def _flatten_hparams(config: Any, parent_key: str = "") -> dict[str, Any]:
+    """Flattens a (possibly nested) jsonargparse Namespace/dict into dotted-key hparams."""
+    if isinstance(config, Namespace):
+        config = vars(config)
+    if isinstance(config, dict):
+        hparams = {}
+        for key, value in config.items():
+            dotted_key = f"{parent_key}.{key}" if parent_key else key
+            hparams.update(_flatten_hparams(value, dotted_key))
+        return hparams
+    if isinstance(config, type):
+        return {parent_key: config.__name__}
+    if type(config).__str__ is object.__str__:
+        return {parent_key: config.__class__.__name__}
+    return {parent_key: config}
 
 
 class MicrostructuresCLI(LightningCLI):
@@ -21,7 +41,8 @@ class MicrostructuresCLI(LightningCLI):
         config = self.config[self.subcommand] if self.subcommand else self.config
         results_dir = config.results_dir
         self.store = RunStore(root_dir=results_dir) if results_dir is not None else RunStore.from_env()
-        self.run_id = self.store.create_run()
+        hparams = _flatten_hparams(config)
+        self.run_id = self.store.create_run(hparams=hparams)
         uri = self.store.open_directory(self.run_id)
 
         config.trainer.logger = {
