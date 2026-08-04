@@ -1,0 +1,7 @@
+model:
+  init_args:
+    architecture: Unet
+    encoder: senet154
+data:
+  init_args:
+    encoder: senet154

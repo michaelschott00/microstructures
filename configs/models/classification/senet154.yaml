@@ -1,0 +1,6 @@
+model:
+  init_args:
+    encoder: senet154
+data:
+  init_args:
+    encoder: senet154
