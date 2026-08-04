@@ -378,11 +378,10 @@ class DataModule(pl.LightningDataModule):
                 **self.dataset_args,
             )
             if self.hparams["sample_size"]:
+                num_samples = round(len(self.train_dataset) * self.hparams["sample_size"])
                 self.train_dataset = Subset(
                     self.train_dataset,
-                    np.random.choice(
-                        len(self.train_dataset), self.hparams["sample_size"]
-                    ),
+                    np.random.choice(len(self.train_dataset), num_samples),
                 )
 
         if stage == "validate":
@@ -450,7 +449,7 @@ class ClassificationDataModule(DataModule):
         blur_limit: blur limit for random blur
         sharpen_alpha: alpha range for random sharpen
         batch_size: batch size
-        sample_size: sample size (NOT a proportion but the absolute size, i.e. if you specify 100, your train set will have 100 samples)
+        sample_size: ratio of the total available training samples to use, e.g. 0.5 uses half of the train set
     """
 
     def __init__(
@@ -474,7 +473,7 @@ class ClassificationDataModule(DataModule):
         sharpen_alpha: List[float] | None = None,
         # batching and sampling
         batch_size: int = 32,
-        sample_size: int | None = None,
+        sample_size: float | None = None,
     ) -> None:
         super().__init__(dataset_cls=ClassificationDataset, dataset_args={})
 
@@ -513,7 +512,7 @@ class SegmentationDataModule(DataModule):
         blur_limit: blur limit for random blur
         sharpen_alpha: alpha range for random sharpen
         batch_size: batch size
-        sample_size: sample size (NOT a proportion but the absolute size, i.e. if you specify 100, your train set will have 100 samples)
+        sample_size: ratio of the total available training samples to use, e.g. 0.5 uses half of the train set
     """
 
     def __init__(
@@ -539,7 +538,7 @@ class SegmentationDataModule(DataModule):
         blur_limit: int | None = None,
         sharpen_alpha: List[float] | None = None,
         # batching and sampling
-        sample_size: int | None = None,
+        sample_size: float | None = None,
         batch_size: int = 32,
     ):
         super().__init__(

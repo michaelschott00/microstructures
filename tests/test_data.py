@@ -150,7 +150,7 @@ class TestDataModuleAugmentationAndPreprocessing:
 
     def test_setup_fit_respects_sample_size(self, classification_data_dir):
         module = self._make_classification_module(
-            classification_data_dir, sample_size=2
+            classification_data_dir, sample_size=1 / 3
         )
 
         module.setup(stage="fit")
