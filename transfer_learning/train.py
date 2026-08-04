@@ -22,7 +22,7 @@ def _flatten_hparams(config: Any, parent_key: str = "") -> dict[str, Any]:
         return hparams
     if isinstance(config, type):
         return {parent_key: config.__name__}
-    if type(config).__str__ is object.__str__:
+    if type(config).__repr__ is object.__repr__:
         return {parent_key: config.__class__.__name__}
     return {parent_key: config}
 
