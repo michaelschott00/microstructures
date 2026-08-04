@@ -1,7 +1,7 @@
 model:
   init_args:
     architecture: Unet
-    encoder: resnet18
+    encoder: inceptionv4
 data:
   init_args:
-    encoder: resnet18
+    encoder: inceptionv4

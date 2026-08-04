@@ -1,7 +1,7 @@
 model:
   init_args:
     architecture: Unet
-    encoder: vgg11_bn
+    encoder: resnet50
 data:
   init_args:
-    encoder: vgg11_bn
+    encoder: resnet50

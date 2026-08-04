@@ -1,0 +1,8 @@
+model:
+  init_args:
+    architecture: Unet
+    encoder: se_resnext101_32x4d
+data:
+  init_args:
+    encoder: se_resnext101_32x4d
+

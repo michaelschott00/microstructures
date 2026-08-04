@@ -1,7 +1,7 @@
 model:
   init_args:
     architecture: Unet
-    encoder: vgg13_bn
+    encoder: efficientnet-b4
 data:
   init_args:
-    encoder: vgg13_bn
+    encoder: efficientnet-b4
