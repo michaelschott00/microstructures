@@ -10,6 +10,7 @@ from typing import Dict, Literal, Union
 
 import matplotlib.pyplot as plt
 import numpy as np
+import pandas as pd
 import segmentation_models_pytorch as smp
 import torchmetrics
 import torchmetrics.classification
@@ -422,7 +423,10 @@ class ClassificationModule(pl.LightningModule):
         """Stores the validation metrics and confusion matrix from the final validation epoch."""
         self.trainer.store.store(
             self.trainer.run_id,
-            {"val_metrics": self._last_val_metrics, "val_confmat": self._last_val_confmat},
+            {
+                "val_metrics": pd.DataFrame([self._last_val_metrics]),
+                "val_confmat": self._last_val_confmat,
+            },
         )
 
     def on_train_batch_start(
@@ -751,7 +755,8 @@ class SegmentationModule(pl.LightningModule):
     def on_fit_end(self) -> None:
         """Stores the validation metrics from the final validation epoch."""
         self.trainer.store.store(
-            self.trainer.run_id, {"val_metrics": self._last_val_metrics}
+            self.trainer.run_id,
+            {"val_metrics": pd.DataFrame([self._last_val_metrics])},
         )
 
     def on_train_epoch_end(self) -> None:
