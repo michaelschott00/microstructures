@@ -4,6 +4,7 @@ on:
   push:
     paths:
       - 'infra/Dockerfile'
+      - '.github/workflows/infra.yml'
 
 jobs:
   push_to_registry:
