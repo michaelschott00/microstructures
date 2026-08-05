@@ -4,7 +4,7 @@ for model in configs/models/classification/*
 do
   for pretraining in configs/pretraining/*
   do
-    python -m transfer_learning.train fit \
+    python3 -m transfer_learning.train fit \
         --config configs/base.yaml \
         --config configs/task/segmentation_1.yaml \
         --config "$model" \

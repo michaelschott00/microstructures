@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 """Utilities for inspecting the segmentation dataset."""
 
 import math
@@ -224,13 +226,9 @@ def preview(
         image = np.array(Image.open(image_path).convert("RGB"))
         label = load_label(label_path)
         if pad_mask_corner or pad_mask_center:
-            label = pad_label_to_shape(
-                label, image.shape[:2], center=pad_mask_center
-            )
+            label = pad_label_to_shape(label, image.shape[:2], center=pad_mask_center)
         if pad_image_corner or pad_image_center:
-            image = pad_image_to_shape(
-                image, label.shape[:2], center=pad_image_center
-            )
+            image = pad_image_to_shape(image, label.shape[:2], center=pad_image_center)
         ax.imshow(overlay_mask(image, label))
         ax.set_title(image_path.stem, fontsize=9)
         ax.axis("off")
@@ -389,9 +387,7 @@ def split(
     """Split a dataset into train, dev and test sets."""
     ratio_sum = train_ratio + dev_ratio + test_ratio
     if not math.isclose(ratio_sum, 1.0, abs_tol=1e-6):
-        raise ValueError(
-            f"--train, --dev and --test must sum to 1.0, got {ratio_sum}"
-        )
+        raise ValueError(f"--train, --dev and --test must sum to 1.0, got {ratio_sum}")
 
     pairs = find_pairs(input_dir, image_dir=image_dir, label_dir=label_dir)
     if not pairs:

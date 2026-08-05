@@ -3,7 +3,7 @@
 for model in configs/models/classification/*; do
   for pretraining in configs/pretraining/*; do
     for sample_size in $(seq .1 .4 1); do
-      python -m transfer_learning.train fit \
+      python3 -m transfer_learning.train fit \
         --config configs/base.yaml \
         --config configs/task/classification_1.yaml \
         --config "$model" \

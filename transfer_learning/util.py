@@ -45,7 +45,8 @@ def load_micronet_weights(
             "pretrained_weights must be one of ['micronet', 'image-micronet']"
         )
     url = pmm.util.get_pretrained_microscopynet_url(encoder, pretrained_weights)
-    state_dict = load_state_dict_from_url(url)
+    device = "gpu" if torch.cuda.is_available() else "cpu"
+    state_dict = load_state_dict_from_url(url, map_location=device)
     check_state_dict_sanity(state_dict)
     return state_dict
 
@@ -77,7 +78,9 @@ def _extract_tiles(
     tile_height, tile_width = tile_size
     stride_height, stride_width = stride
 
-    tiles = image.unfold(1, tile_height, stride_height).unfold(2, tile_width, stride_width)
+    tiles = image.unfold(1, tile_height, stride_height).unfold(
+        2, tile_width, stride_width
+    )
     return tiles.permute(1, 2, 0, 3, 4).contiguous()
 
 
@@ -130,7 +133,9 @@ def tile_and_predict(
     pad_width = (tile_width - padded_width % tile_width) % tile_width
     image = F.pad(image.unsqueeze(0), (0, pad_width, 0, pad_height)).squeeze(0)
 
-    tiles = _extract_tiles(image, (tile_height, tile_width), (stride_height, stride_width))
+    tiles = _extract_tiles(
+        image, (tile_height, tile_width), (stride_height, stride_width)
+    )
     n_tiles_h, n_tiles_w = tiles.shape[:2]
     tiles = tiles.reshape(-1, *tiles.shape[2:])
 
@@ -140,7 +145,9 @@ def tile_and_predict(
             logits = predict_fn(tiles[i : i + batch_size])
             outputs.append(logits.detach())
     outputs = torch.cat(outputs, dim=0)
-    outputs = outputs.reshape(n_tiles_h, n_tiles_w, num_classes, tile_height, tile_width)
+    outputs = outputs.reshape(
+        n_tiles_h, n_tiles_w, num_classes, tile_height, tile_width
+    )
 
     # keep only the center of each tile's prediction so that the stitched tiles tile the image
     # without overlap
@@ -154,7 +161,9 @@ def tile_and_predict(
 
     # stitch the grid of tiles back into a single image
     outputs = outputs.permute(2, 0, 3, 1, 4).contiguous()
-    outputs = outputs.reshape(num_classes, n_tiles_h * stride_height, n_tiles_w * stride_width)
+    outputs = outputs.reshape(
+        num_classes, n_tiles_h * stride_height, n_tiles_w * stride_width
+    )
 
     # remove the padding added above, cropping back to the original image size
     return outputs[:, :height, :width]
