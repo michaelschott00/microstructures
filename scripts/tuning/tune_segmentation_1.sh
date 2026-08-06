@@ -10,7 +10,8 @@ do
         --config "$model" \
         --config configs/optimization/adamw_basic.yaml \
         --config "$pretraining" \
-        --config configs/augmentation/microscope.yaml
+        --config configs/augmentation/microscope.yaml \
+        "$@"
     done
   done
 

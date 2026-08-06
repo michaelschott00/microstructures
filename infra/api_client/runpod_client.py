@@ -55,6 +55,8 @@ class RunPodClient:
             if self.config.verbose:
                 self._print_response(response)
             response.raise_for_status()
+            if not response.content:
+                return {}
             return response.json()
         except requests.exceptions.HTTPError as e:
             print(f"API Error: {e}")

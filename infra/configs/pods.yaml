@@ -1,15 +1,16 @@
 admin:
-  image: "runpod/base:1.1.0-rc.146-ubuntu2404"
+  image: "runpod/base:1.0.2-ubuntu2404"
   name: "microstructure-admin"
   disk: 10
   cloud: SECURE
+  env: 
+    JUPYTER_PASSWORD: ""
   ports:
-    - 8888/http
     - 22/tcp
   mounts:
     network:
       - volumeId: "z7uhknufcb"
-        path: "/data"
+        path: "/workspace"
   dataCenterIds:
     - "EUR-IS-1"
   cpu:
@@ -21,15 +22,16 @@ classification_1:
   image: "michaelschott00/microstructures-runpod:latest"
   args: "./tune_classification_1.sh"
   cloud: SECURE
+  env: 
+    JUPYTER_PASSWORD: ""
   ports:
-    - 8888/http
     - 22/tcp
   dataCenterIds:
     - "EUR-IS-1"
   mounts:
     network:
       - volumeId: "z7uhknufcb"
-        path: "/data"
+        path: "/workspace"
   gpu:
     id: "RTX 4000 Ada"
     count: 1

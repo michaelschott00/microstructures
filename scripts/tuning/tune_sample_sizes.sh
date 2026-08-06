@@ -10,7 +10,8 @@ for model in configs/models/classification/*; do
         --config configs/optimization/adamw_basic.yaml \
         --config "$pretraining" \
         --config configs/augmentation/microscope.yaml \
-        --data.init_args.sample_size "$sample_size"
+        --data.init_args.sample_size "$sample_size" \
+        "$@"
       done
     done
   done
