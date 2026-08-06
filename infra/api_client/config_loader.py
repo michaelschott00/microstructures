@@ -13,34 +13,31 @@ class ConfigLoader:
             return yaml.safe_load(f)
     
     def load_pod_config(self, pod_name: str) -> Dict[str, Any]:
-        """Merge defaults with pod-specific config"""
-        defaults = self.load_yaml("defaults.yaml")
+        """Load a pod-specific config"""
         pods = self.load_yaml("pods.yaml")
-        
+
         if pod_name not in pods:
             raise ValueError(f"Pod '{pod_name}' not found in config")
-        
-        # Deep merge
-        config = {**defaults, **pods[pod_name]}
-        return config
+
+        return pods[pod_name]
     
-    def load_network_volume_config(self, filename: str = "network_volume.yaml") -> Dict[str, Any]:
+    def load_network_volume_config(self, filename: str) -> Dict[str, Any]:
         """Load a network volume config file"""
         return self.load_yaml(filename)
 
     def get_api_token(self) -> str:
         """Load from env or secrets file"""
-        token = os.getenv("RUNPOD_API_TOKEN")
+        token = os.getenv("RUNPOD_API_KEY")
         if not token:
             try:
                 with open(self.config_dir / "secrets.env") as f:
                     for line in f:
-                        if line.startswith("RUNPOD_API_TOKEN="):
+                        if line.startswith("RUNPOD_API_KEY="):
                             token = line.split("=", 1)[1].strip()
                             break
             except FileNotFoundError:
                 pass
         
         if not token:
-            raise ValueError("RUNPOD_API_TOKEN not found")
+            raise ValueError("RUNPOD_API_KEY not found")
         return token

@@ -8,7 +8,7 @@ class NetworkVolumeManager:
         token = self.loader.get_api_token()
         self.client = RunPodClient(RunPodConfig(token=token))
 
-    def create_from_config(self, filename: str = "network_volume.yaml") -> str:
+    def create_from_config(self, filename: str) -> str:
         """Create network volume from config file, return volume ID"""
         volume_config = self.loader.load_network_volume_config(filename)
         result = self.client.create_network_volume(volume_config)

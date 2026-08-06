@@ -69,7 +69,7 @@ def volume():
 
 
 @volume.command("create")
-@click.argument("filename", default="network_volume.yaml")
+@click.argument("filename")
 @click.pass_context
 def volume_create(ctx, filename):
     """Create a network volume from config"""
