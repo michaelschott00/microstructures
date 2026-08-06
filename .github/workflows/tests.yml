@@ -3,7 +3,7 @@
 
 name: Lint & test Python application
 
-on: [push]
+on: push
 
 permissions:
   contents: read
