@@ -1,31 +1,36 @@
 admin:
+  image: "runpod/base:1.1.0-rc.146-ubuntu2404"
   name: "microstructure-admin"
-  image: "runpod/base:1.0.2-ubuntu2404"
-  args: ""
-  cloud: COMMUNITY
-  ports: "8888/http,22/tcp"
-  dataCenterIds: "EU-FR-1"
+  disk: 10
+  cloud: SECURE
+  ports:
+    - 8888/http
+    - 22/tcp
   mounts:
     network:
-      volumeId: "microstructure-data-volume"
-      path: "/workspace"
+      - volumeId: "z7uhknufcb"
+        path: "/data"
+  dataCenterIds:
+    - "EUR-IS-1"
   cpu:
     id: "cpu3c"
     vcpuCount: 2
-  disk: 2
 
 classification_1:
   name: "microstructure-classification_1-training"
   image: "michaelschott00/microstructures-runpod:latest"
   args: "./tune_classification_1.sh"
-  cloud: COMMUNITY
-  ports: "8888/http,22/tcp"
-  dataCenterIds: "EU-FR-1"
+  cloud: SECURE
+  ports:
+    - 8888/http
+    - 22/tcp
+  dataCenterIds:
+    - "EUR-IS-1"
   mounts:
     network:
-      volumeId: "microstructure-data-volume"
-      path: "/workspace"
+      - volumeId: "z7uhknufcb"
+        path: "/data"
   gpu:
-    id: "RTX 2000 Ada"
+    id: "RTX 4000 Ada"
     count: 1
   disk: 30

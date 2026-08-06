@@ -1,3 +1,4 @@
 name: "microstructure-data-volume"
 size: 25
-dataCenter: EU-FR-1
+dataCenter: EUR-IS-1
+type: STANDARD

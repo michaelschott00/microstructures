@@ -14,11 +14,19 @@ DEFAULT_CONFIG_DIR = "infra/configs"
     show_default=True,
     help="Directory containing config files",
 )
+@click.option(
+    "-v",
+    "--verbose",
+    is_flag=True,
+    default=False,
+    help="Print request JSON payloads",
+)
 @click.pass_context
-def cli(ctx, config_dir):
+def cli(ctx, config_dir, verbose):
     """RunPod infrastructure management CLI"""
     ctx.ensure_object(dict)
     ctx.obj["config_dir"] = config_dir
+    ctx.obj["verbose"] = verbose
 
 
 @cli.group()
@@ -31,7 +39,7 @@ def pod():
 @click.pass_context
 def pod_create(ctx, pod_name):
     """Create a pod from config"""
-    manager = PodManager(ctx.obj["config_dir"])
+    manager = PodManager(ctx.obj["config_dir"], verbose=ctx.obj["verbose"])
     pod_id = manager.create_from_config(pod_name)
     click.echo(f"Pod created with ID: {pod_id}")
 
@@ -41,7 +49,7 @@ def pod_create(ctx, pod_name):
 @click.pass_context
 def pod_status(ctx, pod_id):
     """Get pod status"""
-    manager = PodManager(ctx.obj["config_dir"])
+    manager = PodManager(ctx.obj["config_dir"], verbose=ctx.obj["verbose"])
     click.echo(f"Pod status: {manager.status(pod_id)}")
 
 
@@ -49,7 +57,7 @@ def pod_status(ctx, pod_id):
 @click.pass_context
 def pod_list(ctx):
     """List all pods"""
-    manager = PodManager(ctx.obj["config_dir"])
+    manager = PodManager(ctx.obj["config_dir"], verbose=ctx.obj["verbose"])
     click.echo(f"Pods: {manager.client.list_pods()}")
 
 
@@ -58,7 +66,7 @@ def pod_list(ctx):
 @click.pass_context
 def pod_delete(ctx, pod_id):
     """Delete a pod"""
-    manager = PodManager(ctx.obj["config_dir"])
+    manager = PodManager(ctx.obj["config_dir"], verbose=ctx.obj["verbose"])
     manager.client.delete_pod(pod_id)
     click.echo(f"Pod deleted: {pod_id}")
 
@@ -73,7 +81,7 @@ def volume():
 @click.pass_context
 def volume_create(ctx, filename):
     """Create a network volume from config"""
-    manager = NetworkVolumeManager(ctx.obj["config_dir"])
+    manager = NetworkVolumeManager(ctx.obj["config_dir"], verbose=ctx.obj["verbose"])
     volume_id = manager.create_from_config(filename)
     click.echo(f"Network volume created with ID: {volume_id}")
 
@@ -83,7 +91,7 @@ def volume_create(ctx, filename):
 @click.pass_context
 def volume_status(ctx, volume_id):
     """Get network volume status"""
-    manager = NetworkVolumeManager(ctx.obj["config_dir"])
+    manager = NetworkVolumeManager(ctx.obj["config_dir"], verbose=ctx.obj["verbose"])
     click.echo(f"Network volume status: {manager.status(volume_id)}")
 
 
@@ -91,7 +99,7 @@ def volume_status(ctx, volume_id):
 @click.pass_context
 def volume_list(ctx):
     """List all network volumes"""
-    manager = NetworkVolumeManager(ctx.obj["config_dir"])
+    manager = NetworkVolumeManager(ctx.obj["config_dir"], verbose=ctx.obj["verbose"])
     click.echo(f"Network volumes: {manager.client.list_network_volumes()}")
 
 
@@ -100,7 +108,7 @@ def volume_list(ctx):
 @click.pass_context
 def volume_delete(ctx, volume_id):
     """Delete a network volume"""
-    manager = NetworkVolumeManager(ctx.obj["config_dir"])
+    manager = NetworkVolumeManager(ctx.obj["config_dir"], verbose=ctx.obj["verbose"])
     manager.client.delete_network_volume(volume_id)
     click.echo(f"Network volume deleted: {volume_id}")
 

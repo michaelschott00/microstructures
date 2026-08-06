@@ -3,10 +3,10 @@ from infra.api_client.config_loader import ConfigLoader
 from typing import Dict, Any, List
 
 class NetworkVolumeManager:
-    def __init__(self, config_dir: str = "config"):
+    def __init__(self, config_dir: str = "config", verbose: bool = False):
         self.loader = ConfigLoader(config_dir)
         token = self.loader.get_api_token()
-        self.client = RunPodClient(RunPodConfig(token=token))
+        self.client = RunPodClient(RunPodConfig(token=token, verbose=verbose))
 
     def create_from_config(self, filename: str) -> str:
         """Create network volume from config file, return volume ID"""
