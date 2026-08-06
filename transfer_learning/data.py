@@ -39,6 +39,8 @@ class ClassificationDataset(Dataset):
         if split not in ["train", "dev", "test"]:
             raise ValueError("split must be one of 'train', 'dev' or 'test'")
 
+        if "DATA_ROOT" in os.environ:
+            root_dir = os.path.join(os.environ["DATA_ROOT"], root_dir)
         assert os.path.exists(root_dir), f"root_dir '{root_dir}' does not exist"
 
         self.root_dir = os.path.join(root_dir, split)
@@ -133,6 +135,8 @@ class SegmentationDataset(Dataset):
         if split not in ["train", "dev", "test"]:
             raise ValueError("split must be one of 'train', 'dev' or 'test'")
 
+        if "DATA_ROOT" in os.environ:
+            root_dir = os.path.join(os.environ["DATA_ROOT"], root_dir)
         assert os.path.exists(root_dir), f"root_dir '{root_dir}' does not exist"
 
         self.root_dir = os.path.join(root_dir, split)
