@@ -3,7 +3,9 @@
 
 name: Lint & test Python application
 
-on: push
+on:
+  push:
+    branches: [ "main" ]
 
 permissions:
   contents: read
