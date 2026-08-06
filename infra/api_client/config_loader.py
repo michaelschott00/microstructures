@@ -21,9 +21,14 @@ class ConfigLoader:
 
         return pods[pod_name]
     
-    def load_network_volume_config(self, filename: str) -> Dict[str, Any]:
-        """Load a network volume config file"""
-        return self.load_yaml(filename)
+    def load_network_volume_config(self, volume_name: str) -> Dict[str, Any]:
+        """Load a network-volume-specific config"""
+        volumes = self.load_yaml("network_volumes.yaml")
+
+        if volume_name not in volumes:
+            raise ValueError(f"Network volume '{volume_name}' not found in config")
+
+        return volumes[volume_name]
 
     def get_api_token(self) -> str:
         """Load from env or secrets file"""

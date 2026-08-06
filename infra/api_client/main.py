@@ -77,12 +77,12 @@ def volume():
 
 
 @volume.command("create")
-@click.argument("filename")
+@click.argument("volume_name")
 @click.pass_context
-def volume_create(ctx, filename):
+def volume_create(ctx, volume_name):
     """Create a network volume from config"""
     manager = NetworkVolumeManager(ctx.obj["config_dir"], verbose=ctx.obj["verbose"])
-    volume_id = manager.create_from_config(filename)
+    volume_id = manager.create_from_config(volume_name)
     click.echo(f"Network volume created with ID: {volume_id}")
 
 

@@ -8,9 +8,9 @@ class NetworkVolumeManager:
         token = self.loader.get_api_token()
         self.client = RunPodClient(RunPodConfig(token=token, verbose=verbose))
 
-    def create_from_config(self, filename: str) -> str:
-        """Create network volume from config file, return volume ID"""
-        volume_config = self.loader.load_network_volume_config(filename)
+    def create_from_config(self, volume_name: str) -> str:
+        """Create network volume from config, return volume ID"""
+        volume_config = self.loader.load_network_volume_config(volume_name)
         result = self.client.create_network_volume(volume_config)
 
         if "id" in result:
