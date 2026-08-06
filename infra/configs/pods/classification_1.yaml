@@ -1,0 +1,3 @@
+training_pod:
+  name: "microstructure-classification_1-training"
+  args: "./tune_classification_1.sh"

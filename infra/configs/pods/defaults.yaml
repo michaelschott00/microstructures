@@ -1,0 +1,16 @@
+cloud: COMMUNITY
+ports: "8888/http,22/tcp"
+gpu:
+  id: "RTX 2000 Ada"
+  count: 1
+cpu:
+  id: "cpu3m"
+  vcpuCount: 4
+disk: 30
+volumeInGb: 0
+image: "michaelschott00/microstructures-runpod:latest"
+dataCenterIds: "EU-FR-1"
+mounts:
+  network:
+    volumeId: "" # TODO (must create first in same data center as pod)
+    path: "/workspace"
