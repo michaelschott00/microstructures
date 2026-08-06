@@ -31,6 +31,7 @@ COPY ./scripts/**/* .
 
 RUN find . -type f  \( -name '*.sh' -o -name '*.py' \) -exec chmod +x '{}' \;
 
-ENV DATA_ROOT=/microstructures/results
+ENV MLDB_DATA_ROOT=/workspace/results
+ENV DATA_ROOT=/workspace
 
 ENTRYPOINT ["/bin/bash"]
