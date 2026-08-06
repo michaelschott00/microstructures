@@ -3,7 +3,10 @@
 
 name: Lint & test Python application
 
-on: push
+on:
+  push:
+    branches:
+      - runpod
 
 permissions:
   contents: read

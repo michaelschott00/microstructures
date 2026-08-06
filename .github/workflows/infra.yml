@@ -1,6 +1,9 @@
 name: Build and push docker image for training
 
-on: push
+on:
+  push:
+    branches:
+      - runpod
 
 jobs:
   push_to_registry:
