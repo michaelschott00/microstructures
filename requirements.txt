@@ -13,6 +13,4 @@ scikit-learn
 matplotlib
 omegaconf
 torchmetrics
-torch
-torchvision
-torchaudio
+# torch is installed via docker
