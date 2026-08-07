@@ -16,9 +16,7 @@ class NetworkVolumeManager:
         result = self.client.create_network_volume(volume_config)
 
         if "id" in result:
-            print(
-                f"✓ Created network volume '{volume_config['name']}' with ID: {result['id']}"
-            )
+            print(f"✓ Created network volume with ID: {result['id']}")
             return result["id"]
         else:
             print(f"✗ Failed to create network volume: {result}")

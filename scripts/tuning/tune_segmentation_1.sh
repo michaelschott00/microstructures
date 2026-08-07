@@ -1,9 +1,7 @@
 #!/bin/bash
 
-for model in configs/lightning/models/classification/*
-do
-  for pretraining in configs/lightning/pretraining/*
-  do
+for model in configs/lightning/models/classification/*; do
+  for pretraining in configs/lightning/pretraining/*; do
     python3 -m transfer_learning.train fit \
         --config configs/lightning/base.yaml \
         --config configs/lightning/task/segmentation_1.yaml \

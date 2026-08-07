@@ -5,12 +5,12 @@ admin:
   cloud: SECURE
   env:
     JUPYTER_PASSWORD: ""
-    PUBLIC_KEY: "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAILbRau3oKACgYPcJzeQ6CnDzGTLTfqazHLxwjJWpveep throwaway@vivobook-2025-04-24"
+    PUBLIC_KEY: "${SSH_PUBLIC_KEY}"
   ports:
     - 22/tcp
   mounts:
     network:
-      - volumeId: "z7uhknufcb"
+      - volumeId: "${RUNPOD_VOLUME_ID}"
         path: "/workspace"
   dataCenterIds:
     - "EUR-IS-1"
@@ -25,16 +25,16 @@ classification_1:
   cloud: SECURE
   env:
     JUPYTER_PASSWORD: ""
-    PUBLIC_KEY: "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAILbRau3oKACgYPcJzeQ6CnDzGTLTfqazHLxwjJWpveep throwaway@vivobook-2025-04-24"
+    PUBLIC_KEY: "${SSH_PUBLIC_KEY}"
   ports:
     - 22/tcp
   dataCenterIds:
     - "EUR-IS-1"
   mounts:
     network:
-      - volumeId: "z7uhknufcb"
+      - volumeId: "${RUNPOD_VOLUME_ID}"
         path: "/workspace"
   gpu:
     id: "NVIDIA RTX 2000 Ada Generation"
     count: 1
-  disk: 30
+  disk: 10

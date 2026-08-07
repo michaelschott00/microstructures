@@ -1,7 +1,11 @@
 import json
-import requests
-from typing import Dict, Any, Optional
 from dataclasses import dataclass
+from typing import Any, Dict, Optional
+
+import requests
+
+from runpod_client.config_loader import YAML_Type
+
 
 @dataclass
 class RunPodConfig:
@@ -10,15 +14,18 @@ class RunPodConfig:
     timeout: int = 30
     verbose: bool = False
 
+
 class RunPodClient:
     def __init__(self, config: RunPodConfig):
         self.config = config
         self.session = requests.Session()
-        self.session.headers.update({
-            "Authorization": f"Bearer {config.token}",
-            "Content-Type": "application/json"
-        })
-    
+        self.session.headers.update(
+            {
+                "Authorization": f"Bearer {config.token}",
+                "Content-Type": "application/json",
+            }
+        )
+
     @staticmethod
     def _pretty_json(value: str) -> str:
         try:
@@ -66,20 +73,20 @@ class RunPodClient:
         except requests.exceptions.RequestException as e:
             print(f"API Error: {e}")
             raise
-    
-    def create_pod(self, pod_config: Dict[str, Any]) -> Dict[str, Any]:
+
+    def create_pod(self, pod_config: YAML_Type) -> Dict[str, Any]:
         return self._request("POST", "/pods", json=pod_config)
-    
+
     def get_pod(self, pod_id: str) -> Dict[str, Any]:
         return self._request("GET", f"/pods/{pod_id}")
-    
+
     def list_pods(self) -> Dict[str, Any]:
         return self._request("GET", "/pods")
-    
+
     def delete_pod(self, pod_id: str) -> Dict[str, Any]:
         return self._request("DELETE", f"/pods/{pod_id}")
 
-    def create_network_volume(self, volume_config: Dict[str, Any]) -> Dict[str, Any]:
+    def create_network_volume(self, volume_config: YAML_Type) -> Dict[str, Any]:
         return self._request("POST", "/network-volumes", json=volume_config)
 
     def get_network_volume(self, volume_id: str) -> Dict[str, Any]:
@@ -93,6 +100,6 @@ class RunPodClient:
 
     def __enter__(self):
         return self
-    
+
     def __exit__(self, *args):
         self.session.close()
