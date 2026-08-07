@@ -19,7 +19,7 @@ admin:
 
 classification_1:
   name: "microstructure-classification_1-training"
-  image: "michaelschott00/microstructures-runpod:latest"
+  image: "michaelschott00/microstructures:main"
   args: "./tune_classification_1.sh"
   cloud: SECURE
   env: 
@@ -33,6 +33,6 @@ classification_1:
       - volumeId: "z7uhknufcb"
         path: "/workspace"
   gpu:
-    id: "RTX 4000 Ada"
+    id: "NVIDIA RTX 2000 Ada Generation"
     count: 1
   disk: 30

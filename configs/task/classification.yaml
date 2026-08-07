@@ -6,7 +6,7 @@ data:
   class_path: transfer_learning.data.ClassificationDataModule
   init_args:
     data_dir: data/classification
-    num_workers: 2
+    num_workers: null
     size: [192, 192]
 trainer:
   callbacks:
@@ -20,4 +20,3 @@ trainer:
         save_top_k: 1
         monitor: "accuracy/validation"
         mode: "max"
-

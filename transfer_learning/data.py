@@ -9,6 +9,8 @@ import segmentation_models_pytorch as smp
 import torch
 from torch.utils.data import DataLoader, Dataset, Subset
 
+from transfer_learning.util import get_num_cpu_workers
+
 ################################
 #                              #
 #        classification        #
@@ -382,7 +384,9 @@ class DataModule(pl.LightningDataModule):
                 **self.dataset_args,
             )
             if self.hparams["sample_size"]:
-                num_samples = round(len(self.train_dataset) * self.hparams["sample_size"])
+                num_samples = round(
+                    len(self.train_dataset) * self.hparams["sample_size"]
+                )
                 self.train_dataset = Subset(
                     self.train_dataset,
                     np.random.choice(len(self.train_dataset), num_samples),
@@ -412,7 +416,9 @@ class DataModule(pl.LightningDataModule):
         return DataLoader(
             self.train_dataset,
             batch_size=self.hparams["batch_size"],
-            num_workers=self.hparams["num_workers"],
+            num_workers=self.hparams["num_workers"]
+            if self.hparams["num_workers"] is not None
+            else get_num_cpu_workers(),
             shuffle=True,
         )
 
@@ -420,7 +426,9 @@ class DataModule(pl.LightningDataModule):
         """Returns the dataloader for the validation set."""
         return DataLoader(
             self.dev_dataset,
-            num_workers=self.hparams["num_workers"],
+            num_workers=self.hparams["num_workers"]
+            if self.hparams["num_workers"] is not None
+            else get_num_cpu_workers(),
             **self.eval_dataloader_kwargs(),
         )
 
@@ -428,7 +436,9 @@ class DataModule(pl.LightningDataModule):
         """Returns the dataloader for the test set."""
         return DataLoader(
             self.test_dataset,
-            num_workers=self.hparams["num_workers"],
+            num_workers=self.hparams["num_workers"]
+            if self.hparams["num_workers"] is not None
+            else get_num_cpu_workers(),
             **self.eval_dataloader_kwargs(),
         )
 
@@ -440,7 +450,7 @@ class ClassificationDataModule(DataModule):
 
     Args:
         data_dir: path to the data directory
-        num_workers: number of workers for the dataloader
+        num_workers: number of workers for the dataloader (set to None for cpu_cores - 1)
         imagenet_preprocessing: whether to apply imagenet preprocessing
         size: size of the images to crop/interpolate to
         encoder: name of the encoder to get the correct preprocessing function
@@ -461,7 +471,7 @@ class ClassificationDataModule(DataModule):
         # dataset
         data_dir: str,
         # compute
-        num_workers: int = 0,
+        num_workers: int | None = None,
         # preprocessing
         imagenet_preprocessing: bool = True,
         size: List[int] | None = None,
@@ -503,7 +513,7 @@ class SegmentationDataModule(DataModule):
 
     Args:
         data_dir: path to the data directory
-        num_workers: number of workers for the dataloader
+        num_workers: number of workers for the dataloader (set to None for cpu_cores - 1)
         imagenet_preprocessing: whether to apply imagenet preprocessing
         size: size of the images to crop/interpolate to
         encoder: name of the encoder to get the correct preprocessing function
@@ -527,7 +537,7 @@ class SegmentationDataModule(DataModule):
         mask_dir: str,
         num_classes: int = 1,
         # compute
-        num_workers: int = 0,
+        num_workers: int | None = None,
         # preprocessing
         imagenet_preprocessing: bool = True,
         size: List[int] | None = None,

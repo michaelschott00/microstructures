@@ -1,10 +1,19 @@
 from typing import Callable, List, Literal, Tuple
+from os import cpu_count
 
 import pretrained_microscopy_models as pmm
 import torch
 import torch.nn.functional as F
 from torch import nn
 from torch.hub import load_state_dict_from_url
+
+def get_num_cpu_workers() -> int:
+    result = cpu_count()
+    if result is None:
+        result = 1
+    else:
+        result -= 1
+    return result
 
 
 def freeze_encoder_layers(model: nn.Module, ignore_last: int = 0) -> None:
