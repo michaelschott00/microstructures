@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 import click
 
-from infra.api_client.pod_manager import PodManager
-from infra.api_client.network_volume_manager import NetworkVolumeManager
+from runpod_client.network_volume_manager import NetworkVolumeManager
+from runpod_client.pod_manager import PodManager
 
-DEFAULT_CONFIG_DIR = "infra/configs"
+DEFAULT_CONFIG_DIR = "configs/runpod"
 
 
 @click.group()

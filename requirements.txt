@@ -1,9 +1,8 @@
 Pillow
 numpy
-git+https://github.com/nasa/pretrained-microscopy-models
 git+https://github.com/michaelschott00/mldb
 tensorboard
-segmentation-models-pytorch
+segmentation-models-pytorch>=0.5.0
 tqdm
 opencv-python-headless
 lightning

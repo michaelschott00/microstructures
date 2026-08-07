@@ -22,7 +22,7 @@ RUN pip install --no-cache-dir --upgrade pip && \
     pip install --no-cache-dir -r requirements.txt
 
 # Bake models into the image to avoid downloading them each time
-COPY ./infra/preload_models.py .
+COPY ./scripts/preload_models.py .
 RUN python3 -m preload_models && rm -r __pycache__ preload_models.py
 
 COPY ./transfer_learning ./transfer_learning

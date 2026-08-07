@@ -27,7 +27,7 @@ jobs:
         with:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_TOKEN }}
-      
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v4
 
@@ -35,7 +35,6 @@ jobs:
         id: push
         uses: docker/build-push-action@v7
         with:
-          file: infra/Dockerfile
           push: true
           cache-from: type=registry,ref=${{ env.DOCKER_CACHE_IMAGE_NAME }}
           cache-to: type=registry,ref=${{ env.DOCKER_CACHE_IMAGE_NAME }},mode=max

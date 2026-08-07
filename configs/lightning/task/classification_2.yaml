@@ -6,7 +6,7 @@ data:
   class_path: transfer_learning.data.ClassificationDataModule
   init_args:
     data_dir: data/classification_2
-    num_workers: 2
+    num_workers: null
     # size: [484, 645]
     size: [484, 484]
 trainer:

@@ -1,6 +1,8 @@
-from infra.api_client.runpod_client import RunPodClient, RunPodConfig
-from infra.api_client.config_loader import ConfigLoader
-from typing import Dict, Any, List
+from typing import Any, Dict, List
+
+from runpod_client.config_loader import ConfigLoader
+from runpod_client.runpod_client import RunPodClient, RunPodConfig
+
 
 class NetworkVolumeManager:
     def __init__(self, config_dir: str = "config", verbose: bool = False):
@@ -14,7 +16,9 @@ class NetworkVolumeManager:
         result = self.client.create_network_volume(volume_config)
 
         if "id" in result:
-            print(f"✓ Created network volume '{volume_config['name']}' with ID: {result['id']}")
+            print(
+                f"✓ Created network volume '{volume_config['name']}' with ID: {result['id']}"
+            )
             return result["id"]
         else:
             print(f"✗ Failed to create network volume: {result}")
