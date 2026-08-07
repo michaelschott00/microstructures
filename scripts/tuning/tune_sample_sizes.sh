@@ -10,8 +10,8 @@ for model in configs/lightning/models/classification/*; do
         --config configs/lightning/optimization/adamw_basic.yaml \
         --config "$pretraining" \
         --config configs/lightning/augmentation/microscope.yaml \
-        --data.init_args.sample_size "$sample_size" \
-        "$@"
+        --data.init_args.sample_size "$sample_size" "$@" \
+        2>&1 | tee "$DATA_ROOT/logs/$(date +%Y%m%d_%H%M%S)-$model-$pretraining-$sample_size.log"
       done
     done
   done

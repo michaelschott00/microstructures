@@ -8,7 +8,7 @@ for model in configs/lightning/models/classification/*; do
         --config "$model" \
         --config configs/lightning/optimization/adamw_basic.yaml \
         --config "$pretraining" \
-        --config configs/lightning/augmentation/microscope.yaml \
-        "$@"
+        --config configs/lightning/augmentation/microscope.yaml "$@" \
+        2>&1 | tee "$DATA_ROOT/logs/$(date +%Y%m%d_%H%M%S)-$model-$pretraining.log"
     done
   done
