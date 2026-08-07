@@ -108,7 +108,7 @@ def load_micronet_weights(
             "pretrained_weights must be one of ['micronet', 'image-micronet']"
         )
     url = get_pretrained_microscopynet_url(encoder, pretrained_weights)
-    device = "gpu" if torch.cuda.is_available() else "cpu"
+    device = "cuda" if torch.cuda.is_available() else "cpu"
     state_dict = load_state_dict_from_url(url, map_location=device)
     check_state_dict_sanity(state_dict)
     return state_dict
