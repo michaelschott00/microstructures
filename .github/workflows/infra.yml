@@ -2,6 +2,10 @@ name: Build and push docker image for training
 
 on: push
 
+env:
+  DOCKER_IMAGE_NAME: ${{ secrets.DOCKER_USERNAME }}/microstructures-runpod
+  DOCKER_CACHE_IMAGE_NAME: ${{ secrets.DOCKER_USERNAME }}/microstructures-runpod:buildcache
+
 jobs:
   push_to_registry:
     name: Push Docker image to Docker Hub
@@ -25,7 +29,7 @@ jobs:
         id: meta
         uses: docker/metadata-action@9ec57ed1fcdbf14dcef7dfbe97b2010124a938b7
         with:
-          images: michaelschott00/microstructures-runpod
+          images: ${{ env.DOCKER_IMAGE_NAME }}
 
       - name: Build and push Docker image
         id: push
@@ -34,12 +38,14 @@ jobs:
           context: .
           file: infra/Dockerfile
           push: true
+          cache-from: type=registry,ref=${{ env.DOCKER_CACHE_IMAGE_NAME }}
+          cache-to: type=registry,ref=${{ env.DOCKER_CACHE_IMAGE_NAME }},mode=max
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
 
       - name: Generate artifact attestation
         uses: actions/attest@v4
         with:
-          subject-name: index.docker.io/michaelschott00/microstructures-runpod
+          subject-name: index.docker.io/${{ env.DOCKER_IMAGE_NAME }}
           subject-digest: ${{ steps.push.outputs.digest }}
           push-to-registry: true
