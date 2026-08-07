@@ -35,6 +35,6 @@ classification_1:
       - volumeId: "${RUNPOD_VOLUME_ID}"
         path: "/workspace"
   gpu:
-    id: "NVIDIA RTX 2000 Ada Generation"
+    id: "NVIDIA RTX 4000 Ada Generation"
     count: 1
   disk: 10
