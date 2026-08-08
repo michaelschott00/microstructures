@@ -22,10 +22,9 @@ RUN pip install --root-user-action ignore --no-cache-dir --upgrade pip \
 # -u 1001 makes agent distinct from my host system user, similarly for -g 2000
 # -L prevents the agent from using its password at all, disabling sudo as a side-effect
 RUN groupadd -g 2000 -U vscode contributors \
-    && useradd -G 2000 -u 1001 -m -s /usr/sbin/nologin agent \
+    && useradd -g 2000 -u 1001 -m --no-user-group -s /usr/sbin/nologin agent \
     && usermod -L agent
 
-# Install opencode as non-root user
-USER vscode
+# Install opencode as agent user so it has access
+USER agent
 RUN curl -fsSL https://opencode.ai/install | bash
-ENV PATH=$PATH:/home/vscode/.opencode/bin/opencode
