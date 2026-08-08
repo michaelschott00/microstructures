@@ -5,14 +5,8 @@ ENV PYTHONUNBUFFERED=1
 
 WORKDIR /microstructures
 
-# DEBIAN_FRONTEND=noninteractive TZ='Europe/Berlin' required to set timezone without user input, otherwise apt install tzdata will fail
-# /var/lib/apt/lists/* contains cached files that would infalte image size
 RUN apt update -y \
-    && DEBIAN_FRONTEND=noninteractive TZ='Europe/Berlin' \
-        apt install -y --no-install-recommends tzdata
-
-RUN apt update -y \
-    && apt install -y git g++ libgl1 libglib2.0-0 \
+    && apt install -y g++ libgl1 libglib2.0-0 \
     && apt autoclean \
     && apt autoremove \
     && rm -rf /var/lib/apt/lists/*
