@@ -1,6 +1,13 @@
 {
     "name": "Microstructures",
-    "dockerComposeFile": "docker-compose.yml",
-    "service": "devcontainer",
-    "workspaceFolder": "/workspaces/${localWorkspaceFolderBasename}"
+    "build": {
+        "dockerfile": "Dockerfile"
+    },
+    "mounts": [
+        {
+            "source": "/home/michael/.gitconfig",
+            "target": "/home/vscode/.gitconfig",
+            "type": "bind"
+        }
+    ]
 }
