@@ -18,5 +18,5 @@ runpodctl pod create \
   --data-center-ids "EUR-IS-1" \
   --gpu-id "NVIDIA RTX 4000 Ada Generation" \
   --gpu-count 1 \
-  --docker-args "./tune_classification_1.sh" \
+  --docker-args "$@" \
   --wait
