@@ -75,12 +75,12 @@ The following command trains a network for microstructure classification using [
 
 ```sh
 python -m transfer_learning.train fit \
-    --config configs/lightning/base.yaml \
-    --config configs/lightning/task/classification_1.yaml \
-    --config configs/lightning/models/classification/vgg16_bn.yaml \
-    --config configs/lightning/optimization/adamw_basic.yaml \
-    --config configs/lightning/pretraining/image-micronet.yaml \
-    --config configs/lightning/augmentation/microscope.yaml
+    --config configs/base.yaml \
+    --config configs/task/classification_1.yaml \
+    --config configs/models/classification/vgg16_bn.yaml \
+    --config configs/optimization/adamw_basic.yaml \
+    --config configs/pretraining/image-micronet.yaml \
+    --config configs/augmentation/microscope.yaml
 ```
 
 ### Segmentation Example
@@ -89,12 +89,12 @@ A training run for segmentation could look as follows:
 
 ```sh
 python -m transfer_learning.train fit \
-    --config configs/lightning/base.yaml \
-    --config configs/lightning/task/segmentation_1.yaml \
-    --config configs/lightning/models/segmentation/vanilla-vgg16_bn.yaml \
-    --config configs/lightning/optimization/adamw_basic.yaml \
-    --config configs/lightning/pretraining/image-micronet.yaml \
-    --config configs/lightning/augmentation/microscope.yaml
+    --config configs/base.yaml \
+    --config configs/task/segmentation_1.yaml \
+    --config configs/models/segmentation/vanilla-vgg16_bn.yaml \
+    --config configs/optimization/adamw_basic.yaml \
+    --config configs/pretraining/image-micronet.yaml \
+    --config configs/augmentation/microscope.yaml
 ```
 
 ### Setting Parameters from the CLI
@@ -104,12 +104,12 @@ to specify `batch_size` manually, use
 
 ```sh
 python -m transfer_learning.train fit \
-    --config configs/lightning/base.yaml \
-    --config configs/lightning/task/segmentation_1.yaml \
-    --config configs/lightning/models/classification/vanilla-vgg16_bn.yaml \
-    --config configs/lightning/optimization/adamw_basic.yaml \
-    --config configs/lightning/pretraining/image-micronet.yaml \
-    --config configs/lightning/augmentation/microscope.yaml \
+    --config configs/base.yaml \
+    --config configs/task/segmentation_1.yaml \
+    --config configs/models/classification/vanilla-vgg16_bn.yaml \
+    --config configs/optimization/adamw_basic.yaml \
+    --config configs/pretraining/image-micronet.yaml \
+    --config configs/augmentation/microscope.yaml \
     --data.init_args.batch_size 128
 ```
 
