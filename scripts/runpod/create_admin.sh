@@ -1,6 +1,10 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+set -o allexport
+source .env
+set +o allexport
+
 runpodctl pod create \
   --name "microstructure-admin" \
   --image "runpod/base:1.0.2-ubuntu2404" \

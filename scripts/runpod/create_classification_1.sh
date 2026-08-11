@@ -1,6 +1,10 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+set -o allexport
+source .env
+set +o allexport
+
 runpodctl pod create \
   --name "microstructure-classification_1-training" \
   --image "michaelschott00/microstructures:main" \
