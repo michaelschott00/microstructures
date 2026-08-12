@@ -150,7 +150,7 @@ class ClassificationModule(pl.LightningModule):
                 "If lr is a dict, it must contain learning rates for encoder and head."
             )
             assert lr["encoder"] < lr["other"], (
-                "Remove this assertion if you know what you are doing."
+                f"{lr["encoder"]} >= {lr["other"]}. Remove this assertion if you know what you are doing."
             )
 
         self.save_hyperparameters()
@@ -510,7 +510,7 @@ class SegmentationModule(pl.LightningModule):
                 "If lr is a dict, it must contain learning rates for encoder and classifier."
             )
             assert lr["encoder"] < lr["other"], (
-                "Remove this assertion if you know what you are doing."
+                f"{lr["encoder"]} >= {lr["other"]}. Remove this assertion if you know what you are doing."
             )
 
         self.save_hyperparameters()
