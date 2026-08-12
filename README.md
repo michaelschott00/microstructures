@@ -31,11 +31,15 @@ compared to ImageNet pretraining.
 
 ### Setup
 
-Install required packages with
+Install the package (editable) and its dependencies from the repository root:
 
 ```sh
-pip install -r requirements.txt
+pip install -e .
 ```
+
+This installs a few short console commands (see below) and configures pytest.
+The heavy `torch` dependency is intentionally omitted; it is installed
+separately (e.g. via the runpod base image).
 
 ### Example Datasets
 
@@ -48,7 +52,7 @@ The original datasets used in this work are not public. As replacements, example
 After downloading, the datasets can be split into train/val/test sets using the provided scripts:
 
 ```sh
-python scripts/datasets/classification.py split \
+tl-dataset-classification split \
     --n 1000 \  # Optional, reduces training time
     --seed 43 \
     --input-dir <download-path>/PNG \
@@ -58,12 +62,12 @@ python scripts/datasets/classification.py split \
 
 ```sh
 # Remove metadata bar at the bottom
-python scripts/datasets/segmentation.py crop \
+tl-dataset-segmentation crop \
     --input-dir <download-path> \
     --output-dir <output-dir-1>
 
 # Split into train/dev/test sets
-python scripts/datasets/segmentation.py split \
+tl-dataset-segmentation split \
     --input-dir <output-dir-1> \
     --output-dir <output-dir-2> \
     --train 0.7 --dev 0.15 --test 0.15
@@ -74,7 +78,7 @@ python scripts/datasets/segmentation.py split \
 The following command trains a network for microstructure classification using [VGG-16](https://arxiv.org/abs/1409.1556) with [BatchNorm](https://arxiv.org/abs/1502.03167), [ImageNet](https://www.image-net.org/) and [MicroNet](https://github.com/nasa/pretrained-microscopy-models) pretraining using the [AdamW](https://arxiv.org/abs/1711.05101) optimizer and data augmentation:
 
 ```sh
-python -m transfer_learning.train fit \
+tl-train fit \
     --config configs/base.yaml \
     --config configs/task/classification_1.yaml \
     --config configs/models/classification/vgg16_bn.yaml \
@@ -88,7 +92,7 @@ python -m transfer_learning.train fit \
 A training run for segmentation could look as follows:
 
 ```sh
-python -m transfer_learning.train fit \
+tl-train fit \
     --config configs/base.yaml \
     --config configs/task/segmentation_1.yaml \
     --config configs/models/segmentation/vanilla-vgg16_bn.yaml \
@@ -103,7 +107,7 @@ Individual hyperparameters can be overwritten from the command line. For example
 to specify `batch_size` manually, use
 
 ```sh
-python -m transfer_learning.train fit \
+tl-train fit \
     --config configs/base.yaml \
     --config configs/task/segmentation_1.yaml \
     --config configs/models/classification/vanilla-vgg16_bn.yaml \
@@ -138,13 +142,13 @@ in the same folder. Evaluating such a model on the validation- or test set can t
 be done by running
 
 ```sh
-python -m transfer_learning.train validate --config $CONFIG --ckpt_path $CKPT_PATH
+tl-train validate --config $CONFIG --ckpt_path $CKPT_PATH
 ```
 
 or
 
 ```sh
-python -m transfer_learning.train test --config $CONFIG --ckpt_path $CKPT_PATH
+tl-train test --config $CONFIG --ckpt_path $CKPT_PATH
 ```
 
 `$CONFIG` is the path to the configuration file and `$CKPT_PATH` is the path to the checkpoint file.

@@ -1,0 +1,39 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "microstructures"
+version = "0.1.0"
+requires-python = ">=3.10"
+dependencies = [
+    "Pillow",
+    "numpy",
+    "seaborn",
+    "tensorboard",
+    "segmentation-models-pytorch>=0.5.0",
+    "tqdm",
+    "opencv-python-headless",
+    "lightning",
+    "jsonargparse[signatures]",
+    "albumentations",
+    "scikit-learn",
+    "matplotlib",
+    "omegaconf",
+    "torchmetrics",
+    "pytest",
+    "mldb @ git+https://github.com/michaelschott00/mldb",
+]
+
+[project.scripts]
+tl-train = "transfer_learning.train:cli_main"
+tl-dataset-classification = "transfer_learning.cli.dataset_classification:cli"
+tl-dataset-segmentation = "transfer_learning.cli.dataset_segmentation:cli"
+tl-plot = "transfer_learning.cli.plot:cli"
+
+[tool.setuptools]
+packages = ["transfer_learning", "transfer_learning.cli"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
