@@ -492,7 +492,7 @@ class SegmentationModule(pl.LightningModule):
         lr: Union[float, Dict[str, float]],
         T_max: int | None = None,
         weight_decay: float | None = None,
-        momentum: int | None = None,
+        momentum: float | None = None,
         gamma: float | None = None,
         step_size: int | None = None,
         freeze_encoder_after_epoch: bool = False,
