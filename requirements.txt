@@ -13,4 +13,5 @@ scikit-learn
 matplotlib
 omegaconf
 torchmetrics
+pytest
 # torch is installed via docker
