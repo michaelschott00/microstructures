@@ -15,6 +15,7 @@ import segmentation_models_pytorch as smp
 import torchmetrics
 import torchmetrics.classification
 from lightning.pytorch.loggers import TensorBoardLogger
+from lightning.pytorch.loggers.logger import DummyLogger
 from lightning.pytorch.utilities.types import OptimizerLRScheduler
 
 from transfer_learning import util
@@ -401,8 +402,8 @@ class ClassificationModule(pl.LightningModule):
         }
 
     def on_validation_epoch_end(self) -> None:
-        assert isinstance(self.logger, TensorBoardLogger), (
-            "This hook requires a TensorBoardLogger to be configured."
+        assert isinstance(self.logger, TensorBoardLogger) or isinstance(self.logger, DummyLogger), (
+            f"This hook requires a TensorBoardLogger to be configured but was called with {type(self.logger)}."
         )
 
         confmat = self.val_confmat.compute().cpu().numpy()
@@ -439,8 +440,8 @@ class ClassificationModule(pl.LightningModule):
         self, batch: torch.Tensor, batch_idx: int, dataloader_idx: int = 0
     ) -> None:
         if (self.current_epoch == 0) and (batch_idx == 0):
-            assert isinstance(self.logger, TensorBoardLogger), (
-                "This hook requires a TensorBoardLogger to be configured."
+            assert isinstance(self.logger, TensorBoardLogger) or isinstance(self.logger, DummyLogger), (
+                f"This hook requires a TensorBoardLogger to be configured but was called with {type(self.logger)}."
             )
             X, y = batch
             _log_labeled_images(
@@ -451,8 +452,8 @@ class ClassificationModule(pl.LightningModule):
         self, batch: torch.Tensor, batch_idx: int, dataloader_idx: int = 0
     ) -> None:
         if (self.current_epoch == 0) and (batch_idx == 0):
-            assert isinstance(self.logger, TensorBoardLogger), (
-                "This hook requires a TensorBoardLogger to be configured."
+            assert isinstance(self.logger, TensorBoardLogger) or isinstance(self.logger, DummyLogger), (
+                f"This hook requires a TensorBoardLogger to be configured but was called with {type(self.logger)}."
             )
             X, y = batch
             _log_labeled_images(
@@ -720,8 +721,8 @@ class SegmentationModule(pl.LightningModule):
         self, batch: torch.Tensor, batch_idx: int, dataloader_idx: int = 0
     ) -> None:
         if (self.current_epoch == 0) and (batch_idx == 0):
-            assert isinstance(self.logger, TensorBoardLogger), (
-                "This hook requires a TensorBoardLogger to be configured."
+            assert isinstance(self.logger, TensorBoardLogger) or isinstance(self.logger, DummyLogger), (
+                f"This hook requires a TensorBoardLogger to be configured but was called with {type(self.logger)}."
             )
             X, y = batch
             _log_mask_overlay_images(
@@ -737,8 +738,8 @@ class SegmentationModule(pl.LightningModule):
         self, batch: torch.Tensor, batch_idx: int, dataloader_idx: int = 0
     ) -> None:
         if (self.current_epoch == 0) and (batch_idx == 0):
-            assert isinstance(self.logger, TensorBoardLogger), (
-                "This hook requires a TensorBoardLogger to be configured."
+            assert isinstance(self.logger, TensorBoardLogger) or isinstance(self.logger, DummyLogger), (
+                f"This hook requires a TensorBoardLogger to be configured but was called with {type(self.logger)}."
             )
             X, y = batch
             _log_mask_overlay_images(
@@ -767,8 +768,8 @@ class SegmentationModule(pl.LightningModule):
 
     def on_train_epoch_end(self) -> None:
         """We allow freezing the encoder after a certain number of epochs. Also, we log the predicted masks of the model"""
-        assert isinstance(self.logger, TensorBoardLogger), (
-            "This hook requires a TensorBoardLogger to be configured."
+        assert isinstance(self.logger, TensorBoardLogger) or isinstance(self.logger, DummyLogger), (
+            f"This hook requires a TensorBoardLogger to be configured but was called with {type(self.logger)}."
         )
         assert self.X_t_train is not None, "X_t_train"
         assert self.X_t_dev is not None, "X_t_dev"

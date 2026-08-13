@@ -1,10 +1,9 @@
 #!/bin/bash
 
-# Start base image services (Jupyter/SSH) in background
-/start.sh &
+source "$(dirname "$0")/_common.sh"
 
-# Wait for services to start
-sleep 2
+parse_args "$@"
+setup_env
 
 # Run tuning
 for model in configs/models/classification/*; do
@@ -18,10 +17,10 @@ for model in configs/models/classification/*; do
         --config configs/optimization/adamw_basic.yaml \
         --config "$pretraining" \
         --config configs/augmentation/microscope.yaml \
-        --data.init_args.sample_size "$sample_size" "$@"
+        --data.init_args.sample_size "$sample_size" \
+        "${EXTRA_ARGS[@]}" "${ARGS[@]}"
       done
     done
   done
 
-# Stop pod
-runpodctl stop pod $RUNPOD_POD_ID
+teardown
