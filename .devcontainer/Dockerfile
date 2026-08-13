@@ -21,12 +21,14 @@ RUN pip install --no-cache-dir --upgrade pip \
 
 RUN wget -qO- cli.runpod.net | bash
 
+# Add vscode user for the agent path through this dockerfile, devcontainer already has it
+# Create .cache folder with correct permissions, otherwise compose creates it as root
+ARG UID=1000
+RUN id -u ${UID} >>/dev/null 2>&1 || useradd -u ${UID} -m vscode \
+    && mkdir -p /home/vscode/.cache && chown ${UID}:${UID} /home/vscode/.cache
+
 FROM dev AS agent
 
-# Run agent container as non-root user
-# Match UID with host user to avoid problems with permissions on mounted volumes
-ARG UID=1000
-RUN useradd -u ${UID} -m vscode
 USER vscode
 
 RUN curl -fsSL https://opencode.ai/install | bash

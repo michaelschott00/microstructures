@@ -35,10 +35,10 @@ services:
         target: /workspaces/microstructures
       - type: bind
         source: ${HOME}/.cache/torch/
-        target: /home/root/.cache/torch/
+        target: /home/vscode/.cache/torch/
       - type: bind
         source: ${HOME}/.cache/huggingface/
-        target: /home/root/.cache/huggingface/
+        target: /home/vscode/.cache/huggingface/
       - type: bind
         source: ${PWD}/data
         target: /workspaces/microstructures/data
