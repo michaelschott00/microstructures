@@ -418,7 +418,8 @@ class DataModule(pl.LightningDataModule):
             batch_size=self.hparams["batch_size"],
             num_workers=self.hparams["num_workers"]
             if self.hparams["num_workers"] is not None
-            else get_num_cpu_workers(),
+            else min(get_num_cpu_workers(), 32),  # ran into too many open files error with 127
+            persistent_workers=True,  # avoid reloading the dataset every epoch
             shuffle=True,
         )
 
@@ -428,8 +429,9 @@ class DataModule(pl.LightningDataModule):
             self.dev_dataset,
             num_workers=self.hparams["num_workers"]
             if self.hparams["num_workers"] is not None
-            else get_num_cpu_workers(),
+            else min(get_num_cpu_workers(), 32),
             **self.eval_dataloader_kwargs(),
+            persistent_workers=True,
         )
 
     def test_dataloader(self) -> DataLoader:
@@ -438,7 +440,8 @@ class DataModule(pl.LightningDataModule):
             self.test_dataset,
             num_workers=self.hparams["num_workers"]
             if self.hparams["num_workers"] is not None
-            else get_num_cpu_workers(),
+            else min(get_num_cpu_workers(), 32),
+            persistent_workers=True,
             **self.eval_dataloader_kwargs(),
         )
 

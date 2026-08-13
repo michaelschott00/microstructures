@@ -11,8 +11,6 @@ def get_num_cpu_workers() -> int:
     result = cpu_count()
     if result is None:
         result = 1
-    else:
-        result -= 1
     return result
 
 
