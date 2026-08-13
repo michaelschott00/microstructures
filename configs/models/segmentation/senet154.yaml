@@ -5,3 +5,4 @@ model:
 data:
   init_args:
     encoder: senet154
+    batch_size: 4
