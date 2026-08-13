@@ -1,0 +1,7 @@
+{
+  "name": "Microstructures",
+  "dockerComposeFile": "compose.yml",
+  "service": "devcontainer",
+  "workspaceFolder": "/workspaces/${localWorkspaceFolderBasename}",
+  "postCreateCommand": "pip install -e ."
+}

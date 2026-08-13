@@ -1,0 +1,58 @@
+services:
+  devcontainer:
+    build:
+      context: ..
+      dockerfile: .devcontainer/Dockerfile
+      target: dev
+      args:
+        - BASE_IMAGE=mcr.microsoft.com/devcontainers/python:3.12
+    volumes:
+      - type: bind
+        source: ${PWD}
+        target: /workspaces/microstructures
+      - type: bind
+        source: ${HOME}/.cache/torch/
+        target: /home/vscode/.cache/torch/
+      - type: bind
+        source: ${HOME}/.cache/huggingface/
+        target: /home/vscode/.cache/huggingface/
+    secrets:
+      - source: envfile
+        target: /workspaces/microstructures/.env
+    command: sleep infinity
+
+  agent:
+    build:
+      context: ..
+      dockerfile: .devcontainer/Dockerfile
+      target: agent
+      args:
+        - BASE_IMAGE=python:3.12
+        - UID=${UID:-1000}
+    volumes:
+      - type: bind
+        source: ${PWD}
+        target: /workspaces/microstructures
+      - type: bind
+        source: ${HOME}/.cache/torch/
+        target: /home/root/.cache/torch/
+      - type: bind
+        source: ${HOME}/.cache/huggingface/
+        target: /home/root/.cache/huggingface/
+      - type: bind
+        source: ${PWD}/data
+        target: /workspaces/microstructures/data
+        read_only: true
+      - type: bind
+        source: ${PWD}/plots
+        target: /workspaces/microstructures/plots
+        read_only: true
+      - type: bind
+        source: ${PWD}/results
+        target: /workspaces/microstructures/results
+        read_only: true
+    command: sleep infinity
+
+secrets:
+  envfile:
+    file: ${PWD}/../.env
