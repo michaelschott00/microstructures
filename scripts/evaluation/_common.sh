@@ -7,15 +7,56 @@
 parse_args() {
   COMPUTE="runpod"
   MODE="regular"
+  CACHE_DIR=""
   ARGS=()
   EXTRA_ARGS=()
-  for arg in "$@"; do
-    case "$arg" in
-      --dry-run-local) COMPUTE="local"; MODE="dry-run" ;;
-      --dry-run-runpod) COMPUTE="runpod"; MODE="dry-run" ;;
-      *) ARGS+=("$arg") ;;
+  while [ $# -gt 0 ]; do
+    case "$1" in
+      --dry-run-local) COMPUTE="local"; MODE="dry-run"; shift ;;
+      --dry-run-runpod) COMPUTE="runpod"; MODE="dry-run"; shift ;;
+      --cache-dir) CACHE_DIR="$2"; shift 2 ;;
+      *) ARGS+=("$1"); shift ;;
     esac
   done
+}
+
+cache_key() {
+  local out="" p v
+  for p in "$@"; do
+    v="$p"
+    case "$p" in
+      */*|*.yaml) v="$(basename "$p")"; v="${v%.*}" ;;
+    esac
+    if [ -z "$out" ]; then
+      out="$v"
+    else
+      out="$out, $v"
+    fi
+  done
+  printf '%s' "$out"
+}
+
+run_if_not_cached() {
+  local key="$1"
+  shift
+  if [ -z "$CACHE_DIR" ]; then
+    "$@"
+    return $?
+  fi
+  local script_name="$(basename "$0")"
+  script_name="${script_name%.sh}"
+  local cache_file="$CACHE_DIR/$script_name/$key"
+  if [ -f "$cache_file" ]; then
+    echo "$(date) Skipping cached run: $key"
+    return 0
+  fi
+  "$@"
+  local status=$?
+  if [ $status -eq 0 ]; then
+    mkdir -p "$CACHE_DIR/$script_name"
+    touch "$cache_file"
+  fi
+  return $status
 }
 
 # Start base image services (Jupyter/SSH) in background, or set up a local dry run
