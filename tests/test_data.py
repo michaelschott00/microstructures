@@ -1,5 +1,8 @@
+from pathlib import Path
+
 import numpy as np
 import pytest
+from omegaconf import OmegaConf
 
 from transfer_learning.data import (
     ClassificationDataModule,
@@ -7,6 +10,46 @@ from transfer_learning.data import (
     SegmentationDataModule,
     SegmentationDataset,
 )
+
+_CONFIGS_DIR = Path(__file__).resolve().parents[1] / "configs"
+
+
+def _load(path: Path) -> dict:
+    return dict(OmegaConf.load(path))
+
+
+def _data_init_args(module: str) -> list[dict]:
+    """Collects all composed `data.init_args` combinations that appear in the configs.
+
+    A fully-specified data config is built by merging the task, model and augmentation
+    configs the same way the training pipeline composes them.
+    """
+    model_dir = _CONFIGS_DIR / "models" / module
+    augmentation = _load(_CONFIGS_DIR / "augmentation" / "microscope.yaml")["data"][
+        "init_args"
+    ]
+    task_files = {
+        "classification": "classification_1.yaml",
+        "segmentation": "segmentation_1.yaml",
+    }
+    task = _load(_CONFIGS_DIR / "task" / task_files[module])["data"]["init_args"]
+
+    combos = []
+    for model_file in sorted(model_dir.glob("*.yaml")):
+        model_init = _load(model_file)["data"]["init_args"]
+        # same composition order as the training CLI: task, model, augmentation
+        combos.append({**task, **model_init, **augmentation})
+    return combos
+
+
+class TestDataModulesInstantiation:
+    def test_classification_data_module_instantiates(self):
+        for init_args in _data_init_args("classification"):
+            ClassificationDataModule(**init_args)
+
+    def test_segmentation_data_module_instantiates(self):
+        for init_args in _data_init_args("segmentation"):
+            SegmentationDataModule(**init_args)
 
 
 class TestClassificationDataset:
@@ -186,3 +229,40 @@ class TestSegmentationDataModule:
 
         assert len(module.train_dataset) == 3
         assert len(module.dev_dataset) == 3
+
+
+class TestDataloadersProduceBatches:
+    def test_classification_train_dataloader_produces_batch(
+        self, classification_data_dir
+    ):
+        module = ClassificationDataModule(
+            data_dir=str(classification_data_dir),
+            size=[16, 16],
+            imagenet_preprocessing=False,
+            encoder=None,
+            num_workers=1,
+        )
+        module.setup(stage="fit")
+
+        images, labels = next(iter(module.train_dataloader()))
+
+        assert images.shape == (6, 3, 16, 16)
+        assert labels.shape == (6,)
+        assert set(labels.tolist()) == {0, 1}
+
+    def test_segmentation_train_dataloader_produces_batch(self, segmentation_data_dir):
+        module = SegmentationDataModule(
+            data_dir=str(segmentation_data_dir),
+            img_dir="Original",
+            mask_dir="Masks",
+            size=[16, 16],
+            imagenet_preprocessing=False,
+            num_classes=1,
+            num_workers=1,
+        )
+        module.setup(stage="fit")
+
+        images, masks = next(iter(module.train_dataloader()))
+
+        assert images.shape == (3, 3, 16, 16)
+        assert masks.shape == (3, 1, 16, 16)
