@@ -1,34 +1,40 @@
 #!/bin/bash
 
-# Parse args: --dry-run sets DRY_RUN, everything else accumulates in ARGS
+# Parse args.
+#   COMPUTE: "local" or "runpod" (where to run)
+#   MODE:    "regular" or "dry-run"
+# Everything else accumulates in ARGS.
 parse_args() {
-  DRY_RUN=0
+  COMPUTE="runpod"
+  MODE="regular"
   ARGS=()
+  EXTRA_ARGS=()
   for arg in "$@"; do
-    if [ "$arg" = "--dry-run" ]; then
-      DRY_RUN=1
-    else
-      ARGS+=("$arg")
-    fi
+    case "$arg" in
+      --dry-run-local) COMPUTE="local"; MODE="dry-run" ;;
+      --dry-run-runpod) COMPUTE="runpod"; MODE="dry-run" ;;
+      *) ARGS+=("$arg") ;;
+    esac
   done
 }
 
-# Start base image services (Jupyter/SSH) in background, or set up a dry run
+# Start base image services (Jupyter/SSH) in background, or set up a local dry run
 setup_env() {
-  if [ "$DRY_RUN" = "0" ]; then
+  if [ "$MODE" = "dry-run" ]; then
+    EXTRA_ARGS=(--trainer.fast_dev_run=True --data.init_args.batch_size=3)
+    export MLDB_DATA_ROOT=$(mktemp -d /tmp/mldb.XXXXXX)
+  fi
+  if [ "$COMPUTE" = "runpod" ]; then
     /start.sh &
 
     # Wait for services to start
     sleep 2
-  else
-    export MLDB_DATA_ROOT=$(mktemp -d /tmp/mldb.XXXXXX)
-    EXTRA_ARGS=(--trainer.fast_dev_run=True --data.init_args.batch_size=3)
   fi
 }
 
 # Stop pod
 teardown() {
-  if [ "$DRY_RUN" = "0" ]; then
+  if [ "$COMPUTE" = "runpod" ]; then
     runpodctl stop pod $RUNPOD_POD_ID
   fi
 }
