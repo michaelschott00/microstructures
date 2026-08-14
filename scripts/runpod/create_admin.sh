@@ -7,7 +7,7 @@ set +o allexport
 
 runpodctl pod create \
   --name "microstructure-admin" \
-  --image "runpod/base:1.0.2-ubuntu2404" \
+  --image "michaelschott00/microstructures-admin:main" \
   --compute-type cpu \
   --cloud-type SECURE \
   --volume-in-gb 10 \
