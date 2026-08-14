@@ -1,5 +1,9 @@
 #!/bin/bash
 
+set -o allexport
+source .env
+set +o allexport
+
 runpodctl gpu list \
     | jq -r '.[] 
       | select(.secureCloud==true and .available==true) 
