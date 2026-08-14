@@ -16,6 +16,9 @@ services:
       - type: bind
         source: ${HOME}/.cache/huggingface/
         target: /home/vscode/.cache/huggingface/
+      - type: volume
+        source: worktrees
+        target: /workspaces/worktrees
     secrets:
       - source: envfile
         target: /workspaces/microstructures/.env
@@ -51,8 +54,14 @@ services:
         source: ${PWD}/results
         target: /workspaces/microstructures/results
         read_only: true
+      - type: volume
+        source: worktrees
+        target: /workspaces/worktrees
     command: sleep infinity
 
 secrets:
   envfile:
     file: ${PWD}/../.env
+
+volumes:
+  worktrees:
