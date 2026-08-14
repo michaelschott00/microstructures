@@ -5,5 +5,3 @@ ENV PLOTS_ROOT=/workspace/plots
 
 RUN pip install --no-cache-dir --upgrade pip \
     && pip install --no-cache-dir git+https://github.com/michaelschott00/mldb
-
-ENTRYPOINT ["/bin/bash"]
