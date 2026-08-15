@@ -8,7 +8,6 @@ setup_env
 # Run tuning
 for model in configs/models/classification/*; do
   for pretraining in configs/pretraining/*; do
-    for sample_size in $(seq .1 .4 1); do
       echo "$(date)" "$model" "$pretraining" "$sample_size"
       run_if_not_cached "$(cache_key "$model" "$pretraining" "$sample_size")" python3 -m transfer_learning.train fit \
         --config configs/base.yaml \
@@ -17,9 +16,8 @@ for model in configs/models/classification/*; do
         --config configs/optimization/adamw_basic.yaml \
         --config "$pretraining" \
         --config configs/augmentation/microscope.yaml \
-        --data.init_args.sample_size "$sample_size" \
+        --data.init_args.sample_size "0.1" \
         "${EXTRA_ARGS[@]}" "${ARGS[@]}"
-      done
     done
   done
 

@@ -50,6 +50,11 @@ HATCH_MAP = {
     "ImageNet + MicroNet": "x",
 }
 
+METRIC_MAP = {
+    "accuracy/validation": "Validation Accuracy",
+    "iou/validation": "Validation IoU",
+}
+
 
 @click.group()
 @click.option(
@@ -126,9 +131,9 @@ def bar(ctx, metric, filter):
     for handle in g.legend_.legend_handles:
         handle.set_hatch(color_to_hatch[tuple(handle.get_facecolor()[:3])])
     g.tick_params(labelsize=12)
-    g.set_title("Validation Accuracy by Model and Pretraining", fontsize=16)
+    g.set_title(f"{METRIC_MAP.get(metric, metric)} by Model and Pretraining", fontsize=16)
     g.set_xlabel("Model", fontsize=14)
-    g.set_ylabel("Validation Accuracy", fontsize=14)
+    g.set_ylabel(METRIC_MAP.get(metric, metric), fontsize=14)
     g.legend_.set_title("Pretraining")
     plt.xticks(rotation=45, ha="right")
 
@@ -137,7 +142,7 @@ def bar(ctx, metric, filter):
 
     out_path = os.path.join(
         ctx.obj["output_dir"],
-        f"{datetime.now().isoformat()}_classification_results.png",
+        f"{datetime.now().isoformat()}_bar.png",
     )
     plt.savefig(out_path, bbox_inches="tight")
 
