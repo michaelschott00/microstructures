@@ -1,6 +1,5 @@
 # Project specific files and directories
 lightning_logs/
-*.png
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
