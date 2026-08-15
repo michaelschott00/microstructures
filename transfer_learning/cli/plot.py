@@ -33,6 +33,7 @@ PRETRAIN_NAMES = {
 PALETTE = sns.color_palette("colorblind")
 
 STYLE = "whitegrid"
+CONTEXT = "poster"
 
 COLOR_MAP = {
     "No Pretraining": PALETTE[0],
@@ -51,8 +52,8 @@ HATCH_MAP = {
 }
 
 METRIC_MAP = {
-    "accuracy/validation": "Validation Accuracy",
-    "iou/validation": "Validation IoU",
+    "accuracy/validation": "Accuracy",
+    "iou/validation": "IoU",
 }
 
 
@@ -81,22 +82,32 @@ def cli(ctx, output_dir):
     help="Metric to plot. Defaults to accuracy/validation.",
 )
 @click.option(
-    "--filter",
-    default="data/classification_1",
-    help="Value for data.init_args.data_dir filter. Defaults to data/classification_1.",
+    "--tag",
+    default="classification_1",
+    help="Tag to filter for. Defaults to classification_1.",
+)
+@click.option(
+    "--title",
+    default=None,
+    help="Title of the plot. Can contain {metric} placeholder that gets replaced with the metric name.",
+)
+@click.option(
+    "--legend/--no-legend",
+    default=False,
+    help="Save legend as separate file (otherwise main plot has no legend).",
 )
 @click.pass_context
-def bar(ctx, metric, filter):
-    """Validation accuracy by model and pretraining."""
+def bar(ctx, metric, tag, title, legend):
+    """Validation metric by model and pretraining."""
     store = RunStore.from_env()
     db = store.get_db()
-    db.attach(names=["val_metrics"], hparams={"data.init_args.data_dir": [filter]})
+    db.attach(names=["val_metrics"], tags=[tag])
     with db.connect() as con:
         df = con.sql(
             f"""
-            select "{metric}" as accuracy, "model.init_args.encoder" as model, "model.init_args.pretrained_weights" as pretraining
+            select "{metric}" as metric, "model.init_args.encoder" as model, "model.init_args.pretrained_weights" as pretraining
             from val_metrics
-            """
+        """
         ).df()
 
     df["model"] = df["model"].map(MODEL_NAMES).fillna(df["model"])
@@ -104,20 +115,21 @@ def bar(ctx, metric, filter):
     df["pretraining"] = df["pretraining"].map(PRETRAIN_NAMES).fillna(df["pretraining"])
 
     order = (
-        df.groupby("model")["accuracy"].max().sort_values(ascending=False).index.tolist()
+        df.groupby("model")["metric"].max().sort_values(ascending=False).index.tolist()
     )
 
     sns.set_style(STYLE)
+    sns.set_context(CONTEXT) #, font_scale=1.2)
+    plt.figure(figsize=(12, 6))
     g = sns.barplot(
         df,
         x="model",
-        y="accuracy",
+        y="metric",
         hue="pretraining",
         palette=COLOR_MAP,
         hue_order=HUE_ORDER,
         order=order,
     )
-    sns.move_legend(g, "upper left", bbox_to_anchor=(1, 1), frameon=True)
     def desaturate(color, prop):
         h, l, s = colorsys.rgb_to_hls(*color[:3])
         return colorsys.hls_to_rgb(h, l, s * prop)
@@ -128,22 +140,47 @@ def bar(ctx, metric, filter):
     }
     for bar in g.patches:
         bar.set_hatch(color_to_hatch[tuple(bar.get_facecolor()[:3])])
-    for handle in g.legend_.legend_handles:
-        handle.set_hatch(color_to_hatch[tuple(handle.get_facecolor()[:3])])
-    g.tick_params(labelsize=12)
-    g.set_title(f"{METRIC_MAP.get(metric, metric)} by Model and Pretraining", fontsize=16)
-    g.set_xlabel("Model", fontsize=14)
-    g.set_ylabel(METRIC_MAP.get(metric, metric), fontsize=14)
-    g.legend_.set_title("Pretraining")
-    plt.xticks(rotation=45, ha="right")
 
-    ymin = df["accuracy"].min() - 0.05 * (df["accuracy"].max() - df["accuracy"].min())
-    g.set_ylim(bottom=ymin)
+    # Capture legend info before removing
+    legend_handles = g.legend_.legend_handles if g.legend_ else []
+    legend_labels = [h.get_label() for h in legend_handles] if legend_handles else []
+
+    # Apply hatches to legend handles to match bars
+    for handle in legend_handles:
+        label = handle.get_label()
+        if label in HATCH_MAP:
+            handle.set_hatch(HATCH_MAP[label])
+
+    metric_label = METRIC_MAP.get(metric, metric)
+    if title is not None:
+        final_title = title.replace("{metric}", metric_label)
+    else:
+        final_title = f"{metric_label} by Model and Pretraining"
+    g.set_title(final_title)
+    g.set_xlabel("Model")
+    g.set_ylabel(metric_label)
+    # Dynamic y-axis cap: round up max to nearest 0.1
+    max_val = df["metric"].max()
+    cap = ((int(max_val * 10) + 1) / 10)
+    g.set_ylim(0, cap)
+    g.set_yticks([i * 0.1 for i in range(int(cap * 10) + 1)])
+    # Always remove legend from main plot
+    g.legend_.remove()
+    plt.xticks(rotation=45, ha="right")
 
     out_path = os.path.join(
         ctx.obj["output_dir"],
         f"{datetime.now().isoformat()}_bar.png",
     )
+    # Save legend separately if --legend flag is set
+    if legend:
+        legend_path = out_path.replace('_bar.png', '_legend.png')
+        fig = plt.figure(figsize=(3, 1.5))
+        ax = fig.add_subplot(111)
+        ax.legend(handles=legend_handles, labels=legend_labels, title="Pretraining", loc="center")
+        ax.axis('off')
+        fig.savefig(legend_path, bbox_inches='tight')
+        plt.close(fig)
     plt.savefig(out_path, bbox_inches="tight")
 
 

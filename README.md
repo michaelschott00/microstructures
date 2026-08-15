@@ -2,30 +2,18 @@
 
 ## Results
 
-### MicroNet pretraining increases performance, particularly in the low data regime
+<div style="display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 20px;">
+  <div style="display: flex; gap: 20px;">
+    <img src="./plots/classification_1.png" alt="classification_1" width="400">
+    <img src="./plots/sample_sizes.png" alt="sample_sizes" width="400">
+    <img src="./plots/segmentation_1.png" alt="segmentation_1" width="400">
+    <img src="./plots/legend.png" alt="legend" height="80">
+  </div>
+</div><br>
 
-Combining ImageNet- and MicroNet pretraining and utilizing domain-motivated data augmentation together with fine-tuning techniques, we
-
-- improved F1-Score by 0.05 and
-- improved IoU by 0.12
-
-over randomly initialized VGG baselines. We further
-
-- increased F1-Score by ~6% in the low data regime (605 samples)
-
-compared to ImageNet pretraining.
-
-### Full data results
-
-| Encoder | Pretraining       | F1-Score | Encoder  | Pretraining       | IoU  |
-| ------- | ----------------- | -------- | -------- | ----------------- | ---- |
-| VGG16   | None              | 0.84     | VGG-16   | None              | 0.53 |
-| VGG16   | ImageNet          | 0.88     | VGG-16   | ImageNet          | 0.60 |
-| VGG16   | MicroNet          | 0.83     | VGG-16   | MicroNet          | 0.50 |
-| VGG16   | ImageNet-Micronet | 0.89     | VGG-16   | ImageNet-Micronet | 0.60 |
-|         |                   |          | ResNet50 | ImageNet          | 0.62 |
-|         |                   |          | ResNet50 | MicroNet          | 0.46 |
-|         |                   |          | ResNet50 | ImageNet-MicroNet | 0.65 |
+- Pre-training improves performance across all tested models and tasks.
+- ImageNet pre-training beats domain-specific pre-training.
+- We can maintain ~90% of the performance with only 10% of the data.
 
 ## Usage
 

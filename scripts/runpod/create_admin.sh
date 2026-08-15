@@ -10,8 +10,8 @@ runpodctl pod create \
   --image "michaelschott00/microstructures-admin:main" \
   --compute-type cpu \
   --cloud-type SECURE \
-  --volume-in-gb 10 \
-  --container-disk-in-gb 10 \
+  --volume-in-gb 0 \
+  --container-disk-in-gb 20 \
   --env "{\"JUPYTER_PASSWORD\":\"\",\"PUBLIC_KEY\":\"${SSH_PUBLIC_KEY}\"}" \
   --ports "22/tcp" \
   --network-volume-id "${RUNPOD_VOLUME_ID}" \
