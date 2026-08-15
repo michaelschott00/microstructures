@@ -1,4 +1,4 @@
-# Transfer Learning for Microstructure Classification and Segmentation
+# Microstructure Classification and Segmentation
 
 ## Results
 
