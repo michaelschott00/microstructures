@@ -2,14 +2,9 @@
 
 ## Results
 
-<div style="display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 20px;">
-  <div style="display: flex; gap: 20px;">
-    <img src="./images/classification_1.png" alt="classification_1" width="400">
-    <img src="./images/sample_sizes.png" alt="sample_sizes" width="400">
-    <img src="./images/segmentation_1.png" alt="segmentation_1" width="400">
-    <img src="./images/legend.png" alt="legend" height="80">
-  </div>
-</div><br>
+<p align="center">
+<img src="./images/plotgrid.png" alt="Grid of bar plots displaying the results." width="600"><br>
+</p>
 
 - Pre-training improves performance across all tested models and tasks.
 - ImageNet pre-training beats domain-specific pre-training.

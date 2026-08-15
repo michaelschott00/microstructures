@@ -119,7 +119,7 @@ def bar(ctx, metric, tag, title, legend):
     )
 
     sns.set_style(STYLE)
-    sns.set_context(CONTEXT) #, font_scale=1.2)
+    sns.set_context(CONTEXT)
     plt.figure(figsize=(12, 6))
     g = sns.barplot(
         df,
@@ -181,6 +181,116 @@ def bar(ctx, metric, tag, title, legend):
         ax.axis('off')
         fig.savefig(legend_path, bbox_inches='tight')
         plt.close(fig)
+    plt.savefig(out_path, bbox_inches="tight")
+
+
+def _load_bar_data(metric, tag):
+    """Load and preprocess data for a bar plot."""
+    store = RunStore.from_env()
+    db = store.get_db()
+    db.attach(names=["val_metrics"], tags=[tag])
+    with db.connect() as con:
+        df = con.sql(
+            f"""
+            select "{metric}" as metric, "model.init_args.encoder" as model, "model.init_args.pretrained_weights" as pretraining
+            from val_metrics
+        """
+        ).df()
+
+    df["model"] = df["model"].map(MODEL_NAMES).fillna(df["model"])
+    df["pretraining"] = df["pretraining"].map(PRETRAIN_NAMES).fillna(df["pretraining"])
+    return df
+
+
+def _render_bar(ax, df, metric, title):
+    """Render a single bar plot onto the given axes, return (handles, labels)."""
+    order = (
+        df.groupby("model")["metric"].max().sort_values(ascending=False).index.tolist()
+    )
+
+    sns.set_style(STYLE)
+    sns.set_context(CONTEXT)
+    g = sns.barplot(
+        df,
+        x="model",
+        y="metric",
+        hue="pretraining",
+        palette=COLOR_MAP,
+        hue_order=HUE_ORDER,
+        order=order,
+        ax=ax,
+    )
+
+    def desaturate(color, prop):
+        h, l, s = colorsys.rgb_to_hls(*color[:3])
+        return colorsys.hls_to_rgb(h, l, s * prop)
+
+    color_to_hatch = {
+        tuple(desaturate(COLOR_MAP[name], 0.75)): HATCH_MAP[name]
+        for name in HUE_ORDER
+    }
+    for bar in g.patches:
+        bar.set_hatch(color_to_hatch[tuple(bar.get_facecolor()[:3])])
+
+    legend_handles = g.legend_.legend_handles if g.legend_ else []
+    legend_labels = [h.get_label() for h in legend_handles] if legend_handles else []
+
+    for handle in legend_handles:
+        label = handle.get_label()
+        if label in HATCH_MAP:
+            handle.set_hatch(HATCH_MAP[label])
+
+    metric_label = METRIC_MAP.get(metric, metric)
+    if title is not None:
+        final_title = title.replace("{metric}", metric_label)
+    else:
+        final_title = f"{metric_label} by Model and Pretraining"
+    g.set_title(final_title)
+    g.set_xlabel("")
+    g.set_ylabel(metric_label)
+    max_val = df["metric"].max()
+    cap = ((int(max_val * 10) + 1) / 10)
+    g.set_ylim(0, cap)
+    g.set_yticks([i * 0.1 for i in range(int(cap * 10) + 1)])
+    g.legend_.remove()
+    plt.setp(g.get_xticklabels(), rotation=45, ha="right") #, fontsize=8)
+    return legend_handles, legend_labels
+
+
+@cli.command()
+@click.option("--metric-1", default="accuracy/validation", help="Metric for subplot 1.")
+@click.option("--tag-1", default="classification_1", help="Tag for subplot 1.")
+@click.option("--title-1", default=None, help="Title for subplot 1.")
+@click.option("--metric-2", default="accuracy/validation", help="Metric for subplot 2.")
+@click.option("--tag-2", default="sample-size", help="Tag for subplot 2.")
+@click.option("--title-2", default=None, help="Title for subplot 2.")
+@click.option("--metric-3", default="iou/validation", help="Metric for subplot 3.")
+@click.option("--tag-3", default="segmentation_1", help="Tag for subplot 3.")
+@click.option("--title-3", default="{metric} by Model and Pretraining", help="Title for subplot 3.")
+@click.pass_context
+def bargrid(ctx, metric_1, tag_1, title_1, metric_2, tag_2, title_2, metric_3, tag_3, title_3):
+    """2x2 grid of bar plots with legend in the bottom-right cell."""
+    df1 = _load_bar_data(metric_1, tag_1)
+    df2 = _load_bar_data(metric_2, tag_2)
+    df3 = _load_bar_data(metric_3, tag_3)
+
+    sns.set_style(STYLE)
+    sns.set_context(CONTEXT)
+    fig, axes = plt.subplots(2, 2, figsize=(22, 14))
+
+    _, _ = _render_bar(axes[0, 0], df1, metric_1, title_1)
+    _, _ = _render_bar(axes[0, 1], df2, metric_2, title_2)
+    handles, labels = _render_bar(axes[1, 0], df3, metric_3, title_3)
+
+    axes[1, 1].axis("off")
+    axes[1, 1].legend(handles, labels, title="Pretraining", loc="center") #, fontsize=12, title_fontsize=13)
+
+    fig.tight_layout(rect=[0, 0, 1, 0.97])
+
+    out_path = os.path.join(
+        ctx.obj["output_dir"],
+        f"{datetime.now().isoformat()}_bargrid.png",
+    )
     plt.savefig(out_path, bbox_inches="tight")
 
 
