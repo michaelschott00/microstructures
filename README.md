@@ -3,7 +3,7 @@
 ## Results
 
 <p align="center">
-<img src="./images/plotgrid.png" alt="Grid of bar plots displaying the results." width="600"><br>
+<img src="./images/plotgrid.png" alt="Grid of bar plots displaying the results." width="800"><br>
 </p>
 
 - Pre-training improves performance across all tested models and tasks.
