@@ -6,9 +6,9 @@
 <img src="./images/plotgrid.png" alt="Grid of bar plots displaying the results." width="800"><br>
 </p>
 
-- Pre-training improves performance across all tested models and tasks.
-- ImageNet pre-training beats domain-specific pre-training.
-- We can maintain ~90% of the performance with only 10% of the data.
+- Pretraining improves performance across all evaluated models and tasks.
+- ImageNet pretraining beats domain-specific pretraining in most considered settings.
+- We can maintain ~90% of the classification performance with only 10% of the available data (605 images).
 
 ## Usage
 
